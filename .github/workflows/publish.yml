@@ -23,6 +23,15 @@ jobs:
       - run: npm ci
       - run: npm run check
       - run: npm run build
+
+      # Verify the tarball contains dist/index.js and the module loads cleanly
+      - name: Pack and smoke test
+        run: |
+          npm pack
+          tar -tzf coval-wizard-*.tgz | grep -q "package/dist/index.js"
+          node --input-type=module --eval "import('./dist/index.js').catch(e => { process.stderr.write(e.message); process.exit(1); })"
+          rm -f coval-wizard-*.tgz
+
       - run: npm publish --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

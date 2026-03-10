@@ -1,6 +1,5 @@
-import type { Config } from 'jest'
-
-const config: Config = {
+/** @type {import('jest').Config} */
+module.exports = {
   preset: 'ts-jest/presets/default-esm',
   testEnvironment: 'node',
   injectGlobals: true,
@@ -13,5 +12,3 @@ const config: Config = {
   },
   testMatch: ['<rootDir>/src/__tests__/**/*.test.ts'],
 }
-
-export default config
