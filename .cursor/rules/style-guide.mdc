@@ -1,0 +1,19 @@
+---
+description: Code style and conventions - references .coderabbit.yaml
+globs: "**/*.{ts}"
+alwaysApply: true
+---
+
+# Style Guide
+
+**Read `.coderabbit.yaml` for all code style rules.** It contains path-specific instructions for TypeScript, tests, and CI workflows.
+
+Key points:
+- Strict TypeScript: no `any`, no `console.log` in library code, throw `new Error()` not strings
+- Named exports only; no default exports except entry point
+- `export const fn = (...) =>` for all functions (arrow functions, not `function` declarations)
+- camelCase for file names (e.g. `myModule.ts`, not `my-module.ts`)
+- AbortSignal.timeout() for all outbound fetch calls
+- Named constants for all API URLs and magic values (src/constants.ts)
+- Jest: real temp dirs for filesystem tests, jest.spyOn for network tests
+- Conventional commits format, no AI attribution
