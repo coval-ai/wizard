@@ -1,4 +1,4 @@
-import type { Framework } from './types.js';
+import type { Framework } from './types.js'
 
 // ---------------------------------------------------------------------------
 // coval_tracing.py reference implementation
@@ -314,7 +314,7 @@ def create_tool_call_span(name: str = "", call_id: str = "", arguments: str = ""
     for k, v in kwargs.items():
         span.set_attribute(k, v)
     return trace.use_span(span, end_on_exit=True)
-`;
+`
 
 // ---------------------------------------------------------------------------
 // Framework-specific injection rules
@@ -351,7 +351,7 @@ const FRAMEWORK_RULES: Record<Framework, string> = {
 - Add \`setup_coval_tracing()\` at module level, after imports
 - Add a TODO comment for where to call \`set_simulation_id()\` with the actual simulation ID
 - If there's an obvious session/call start point, suggest calling \`set_simulation_id()\` there`,
-};
+}
 
 // ---------------------------------------------------------------------------
 // Prompt builders
@@ -385,24 +385,24 @@ Return ONLY valid JSON with these exact keys:
 - NEVER hardcode API keys — always use environment variables
 - Add \`# COVAL:\` comment markers next to injected lines
 - The \`coval_tracing.py\` content must be IDENTICAL to the reference above
-- Import from \`coval_tracing\`: \`setup_coval_tracing\`, \`set_simulation_id\`, and \`instrument_session\` (LiveKit only)`;
+- Import from \`coval_tracing\`: \`setup_coval_tracing\`, \`set_simulation_id\`, and \`instrument_session\` (LiveKit only)`
 }
 
 /** Build the user prompt with the entry point and dependency context. */
 export const buildUserPrompt = (opts: {
-  framework: Framework;
-  entryPointPath: string;
-  entryPointContent: string;
-  additionalFiles: Record<string, string>;
+  framework: Framework
+  entryPointPath: string
+  entryPointContent: string
+  additionalFiles: Record<string, string>
 }): string => {
   const parts = [
     `Add Coval tracing to this ${opts.framework} agent project.`,
     `\nEntry point file (${opts.entryPointPath}):\n\`\`\`python\n${opts.entryPointContent}\n\`\`\``,
-  ];
+  ]
 
   for (const [name, content] of Object.entries(opts.additionalFiles)) {
-    parts.push(`\n${name}:\n\`\`\`\n${content}\n\`\`\``);
+    parts.push(`\n${name}:\n\`\`\`\n${content}\n\`\`\``)
   }
 
-  return parts.join('\n');
+  return parts.join('\n')
 }

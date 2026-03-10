@@ -3,6 +3,7 @@
 **Read `.coderabbit.yaml` for all code style rules.** It contains path-specific instructions for TypeScript, tests, and CI workflows.
 
 Key points:
+
 - Strict TypeScript: no `any`, no unused imports, no `console.log` in library code
 - `type` over `interface` for simple shapes
 - Named exports; no default exports except entry point

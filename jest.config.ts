@@ -1,4 +1,4 @@
-import type { Config } from 'jest';
+import type { Config } from 'jest'
 
 const config: Config = {
   preset: 'ts-jest/presets/default-esm',
@@ -12,6 +12,6 @@ const config: Config = {
     '^.+\\.ts$': ['ts-jest', { useESM: true }],
   },
   testMatch: ['<rootDir>/src/__tests__/**/*.test.ts'],
-};
+}
 
-export default config;
+export default config
