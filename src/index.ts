@@ -143,11 +143,15 @@ const main = async () => {
   p.outro("You're all set!")
 }
 
-const realSelf = realpathSync(fileURLToPath(import.meta.url))
-const realArgv = realpathSync(process.argv[1])
-if (realSelf === realArgv) {
-  main().catch((err) => {
-    console.error(chalk.red(err.message || err))
-    process.exit(1)
-  })
+try {
+  const realSelf = realpathSync(fileURLToPath(import.meta.url))
+  const realArgv = realpathSync(process.argv[1] ?? '')
+  if (realSelf === realArgv) {
+    main().catch((err) => {
+      console.error(chalk.red(err.message || err))
+      process.exit(1)
+    })
+  }
+} catch {
+  // not the entry point — imported as a module
 }
