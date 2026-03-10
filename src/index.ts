@@ -146,7 +146,9 @@ async function main() {
   p.outro("You're all set!");
 }
 
-main().catch((err) => {
-  console.error(chalk.red(err.message || err));
-  process.exit(1);
-});
+if (import.meta.url === `file://${process.argv[1]}`) {
+  main().catch((err) => {
+    console.error(chalk.red(err.message || err));
+    process.exit(1);
+  });
+}
