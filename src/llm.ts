@@ -2,6 +2,7 @@ import {
   COVAL_WIZARD_ENDPOINT,
   LLM_DEFAULTS,
   LLM_MAX_TOKENS,
+  LLM_TIMEOUT_MS,
   type LLMProvider,
 } from './constants.js';
 import { buildSystemPrompt, buildUserPrompt } from './prompts.js';
@@ -170,11 +171,25 @@ async function fetchJson(
   url: string,
   opts: { headers: Record<string, string>; body: unknown },
 ): Promise<unknown> {
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: opts.headers,
-    body: JSON.stringify(opts.body),
-  });
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), LLM_TIMEOUT_MS);
+
+  let res: Response;
+  try {
+    res = await fetch(url, {
+      method: 'POST',
+      headers: opts.headers,
+      body: JSON.stringify(opts.body),
+      signal: controller.signal,
+    });
+  } catch (err) {
+    if (err instanceof Error && err.name === 'AbortError') {
+      throw new Error(`LLM request timed out after ${LLM_TIMEOUT_MS / 1000}s`);
+    }
+    throw err;
+  } finally {
+    clearTimeout(timeout);
+  }
 
   if (!res.ok) {
     const body = await res.text();
@@ -187,10 +202,17 @@ async function fetchJson(
 /** Extract JSON from LLM text that may be wrapped in a fenced code block. */
 export function extractJson(text: string): unknown {
   const fenced = text.match(/```(?:json)?\s*\n?([\s\S]*?)\n?```/);
-  return JSON.parse(fenced ? fenced[1] : text);
+  const raw = fenced ? fenced[1] : text;
+  try {
+    return JSON.parse(raw);
+  } catch (err) {
+    throw new Error(
+      `Failed to parse LLM response as JSON: ${err instanceof Error ? err.message : err}`,
+    );
+  }
 }
 
-/** Validate that LLM output has the required shape. */
+/** Validate that LLM output has the required shape with string values. */
 export function validateResponse(data: unknown): WizardLLMResponse {
   if (
     typeof data !== 'object' ||
@@ -201,5 +223,15 @@ export function validateResponse(data: unknown): WizardLLMResponse {
   ) {
     throw new Error('Invalid LLM response — missing required fields');
   }
-  return data as WizardLLMResponse;
+
+  const { coval_tracing_py, modified_entry_point, explanation } = data as Record<string, unknown>;
+  if (
+    typeof coval_tracing_py !== 'string' ||
+    typeof modified_entry_point !== 'string' ||
+    typeof explanation !== 'string'
+  ) {
+    throw new Error('Invalid LLM response — expected string fields');
+  }
+
+  return { coval_tracing_py, modified_entry_point, explanation };
 }

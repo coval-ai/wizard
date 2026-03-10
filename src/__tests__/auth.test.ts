@@ -6,18 +6,18 @@ describe('verifyApiKey', () => {
     vi.restoreAllMocks();
   });
 
-  it('returns true on 200', async () => {
+  it('returns ok on 200', async () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response('', { status: 200 }));
-    expect(await verifyApiKey('valid-key')).toBe(true);
+    expect(await verifyApiKey('valid-key')).toBe('ok');
   });
 
-  it('returns false on 401', async () => {
+  it('returns invalid on 401', async () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response('', { status: 401 }));
-    expect(await verifyApiKey('bad-key')).toBe(false);
+    expect(await verifyApiKey('bad-key')).toBe('invalid');
   });
 
-  it('returns false on network error', async () => {
+  it('returns network_error on fetch failure', async () => {
     vi.spyOn(globalThis, 'fetch').mockRejectedValue(new Error('connection refused'));
-    expect(await verifyApiKey('any-key')).toBe(false);
+    expect(await verifyApiKey('any-key')).toBe('network_error');
   });
 });

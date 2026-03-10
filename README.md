@@ -1,6 +1,6 @@
 # @coval/wizard
 
-```
+```text
             (__)
             (oo)
     /--------\/
@@ -12,7 +12,7 @@
 
 Add [Coval](https://coval.dev) OTel tracing to your AI agent with one command.
 
-The wizard reads your Python agent code, uses Claude to figure out exactly where to inject tracing, and writes the changes for you — with diffs, backups, and validation.
+The wizard reads your Python agent code, uses an LLM to figure out exactly where to inject tracing, and writes the changes for you — with diffs, backups, and validation.
 
 ## Quick Start
 
@@ -25,7 +25,7 @@ That's it. Run it from your agent's project directory and follow the prompts.
 ## What It Does
 
 1. **Detects** your Python project and framework (Pipecat, LiveKit Agents, or generic)
-2. **Analyzes** your entry point with Claude to determine the minimal changes needed
+2. **Analyzes** your entry point with an LLM (Anthropic, OpenAI, or Gemini) to determine the minimal changes needed
 3. **Shows** a colored diff of proposed changes and asks for confirmation
 4. **Creates** `coval_tracing.py` — a self-contained OpenTelemetry module for Coval
 5. **Modifies** your entry point to initialize tracing (original backed up to `.bak`)
@@ -41,7 +41,7 @@ That's it. Run it from your agent's project directory and follow the prompts.
 
 ## Options
 
-```
+```text
 npx @coval/wizard [directory] [options]
 
 Options:
@@ -92,13 +92,13 @@ COVAL_API_KEY=your-key WIZARD_LLM_KEY=AIza... WIZARD_LLM_PROVIDER=gemini npm run
 
 ## How It Works
 
-The wizard sends your entry point code to Claude with a detailed system prompt containing:
+The wizard sends your entry point code to the configured LLM with a detailed system prompt containing:
 
 - The complete `coval_tracing.py` reference implementation
 - Framework-specific injection rules (where to place imports, setup calls, sim ID extraction)
 - Strict output format (JSON with the generated files)
 
-Claude returns the modified entry point and a `coval_tracing.py` tailored to your agent. The wizard shows the diff, asks for confirmation, then writes the files.
+The LLM returns the modified entry point and a `coval_tracing.py` tailored to your agent. The wizard shows the diff, asks for confirmation, then writes the files.
 
 ## Publishing
 

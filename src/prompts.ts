@@ -380,8 +380,8 @@ Return ONLY valid JSON with these exact keys:
 }
 
 ## Rules
-- Preserve ALL existing code — only ADD imports and setup calls
-- Produce the minimal diff possible
+- Preserve existing behavior and keep unrelated code unchanged
+- Produce the minimal diff possible, but make any import, setup, handler, or call-site edits required by the framework rules above
 - NEVER hardcode API keys — always use environment variables
 - Add \`# COVAL:\` comment markers next to injected lines
 - The \`coval_tracing.py\` content must be IDENTICAL to the reference above

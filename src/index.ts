@@ -33,7 +33,12 @@ async function main() {
   const spinner = p.spinner();
 
   spinner.start('Verifying API key');
-  if (!(await verifyApiKey(apiKey))) {
+  const authResult = await verifyApiKey(apiKey);
+  if (authResult === 'network_error') {
+    spinner.stop('Could not reach api.coval.dev — check your network and try again', 1);
+    process.exit(1);
+  }
+  if (authResult === 'invalid') {
     spinner.stop('API key verification failed', 1);
     p.cancel('Invalid API key. Get one at https://app.coval.dev');
     process.exit(1);
@@ -56,7 +61,8 @@ async function main() {
   const entryPointFullPath = join(targetDir, detection.entryPointPath);
   const entryPointContent = readFile(entryPointFullPath);
 
-  spinner.start('Analyzing your code with Claude');
+  const providerName = process.env.WIZARD_LLM_PROVIDER ?? 'the LLM';
+  spinner.start(`Analyzing your code with ${providerName}`);
   let result;
   try {
     result = await callWizardLLM({
@@ -103,9 +109,12 @@ async function main() {
 
   // ── Apply ─────────────────────────────────────────────────────────────
   backupFile(entryPointFullPath);
+  if (!isCreate) {
+    backupFile(covalTracingPath);
+  }
   writeFile(covalTracingPath, result.coval_tracing_py);
   writeFile(entryPointFullPath, result.modified_entry_point);
-  p.log.success('Created coval_tracing.py');
+  p.log.success(`${isCreate ? 'Created' : 'Updated'} coval_tracing.py`);
   p.log.success(`Modified ${detection.entryPointPath}`);
 
   // ── Validate ──────────────────────────────────────────────────────────

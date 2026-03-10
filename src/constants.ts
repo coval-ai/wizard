@@ -4,6 +4,7 @@ export const COVAL_AGENTS_ENDPOINT = `${COVAL_API_BASE}/v1/agents`;
 export const COVAL_WIZARD_ENDPOINT = `${COVAL_API_BASE}/v1/wizard/complete`;
 
 export const LLM_MAX_TOKENS = 8192;
+export const LLM_TIMEOUT_MS = 120_000;
 
 export type LLMProvider = 'anthropic' | 'openai' | 'gemini';
 

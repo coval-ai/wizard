@@ -21,14 +21,16 @@ export async function getApiKey(): Promise<string> {
   return result;
 }
 
-/** Verify an API key by hitting the agents endpoint. */
-export async function verifyApiKey(apiKey: string): Promise<boolean> {
+export type VerifyResult = 'ok' | 'invalid' | 'network_error';
+
+/** Verify an API key. Distinguishes auth failure from network issues. */
+export async function verifyApiKey(apiKey: string): Promise<VerifyResult> {
   try {
     const res = await fetch(COVAL_AGENTS_ENDPOINT, {
       headers: { 'x-api-key': apiKey },
     });
-    return res.ok;
+    return res.ok ? 'ok' : 'invalid';
   } catch {
-    return false;
+    return 'network_error';
   }
 }

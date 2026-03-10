@@ -164,8 +164,8 @@ describe('extractJson', () => {
     expect(extractJson('```\n{"key": "value"}\n```')).toEqual({ key: 'value' });
   });
 
-  it('throws on invalid JSON', () => {
-    expect(() => extractJson('not json {{')).toThrow();
+  it('throws on invalid JSON with helpful message', () => {
+    expect(() => extractJson('not json {{')).toThrow('Failed to parse LLM response as JSON');
   });
 });
 
@@ -188,5 +188,15 @@ describe('validateResponse', () => {
 
   it('rejects empty object', () => {
     expect(() => validateResponse({})).toThrow('missing required fields');
+  });
+
+  it('rejects non-string fields', () => {
+    expect(() =>
+      validateResponse({
+        coval_tracing_py: {},
+        modified_entry_point: 1,
+        explanation: null,
+      }),
+    ).toThrow('expected string fields');
   });
 });
