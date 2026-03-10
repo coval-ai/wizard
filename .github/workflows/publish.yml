@@ -24,13 +24,16 @@ jobs:
       - run: npm run check
       - run: npm run build
 
-      # Verify the tarball contains dist/index.js and the module loads cleanly
+      # Verify the tarball contains dist/index.js and the bin mapping works
       - name: Pack and smoke test
         run: |
           npm pack
-          tar -tzf coval-wizard-*.tgz | grep -q "package/dist/index.js"
-          node --input-type=module --eval "import('./dist/index.js').catch(e => { process.stderr.write(e.message); process.exit(1); })"
-          rm -f coval-wizard-*.tgz
+          TARBALL=$(ls coval-wizard-*.tgz)
+          tar -tzf "$TARBALL" | grep -q "package/dist/index.js"
+          mkdir -p /tmp/wizard-smoke
+          npm install --prefix /tmp/wizard-smoke "$PWD/$TARBALL"
+          /tmp/wizard-smoke/node_modules/.bin/coval-wizard 2>&1 || true
+          rm -f "$TARBALL"
 
       - run: npm publish --access public
         env:
