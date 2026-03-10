@@ -2,7 +2,7 @@ import * as p from '@clack/prompts';
 import { COVAL_AGENTS_ENDPOINT } from './constants.js';
 
 /** Resolve the Coval API key from env or interactive prompt. */
-export async function getApiKey(): Promise<string> {
+export const getApiKey = async (): Promise<string> => {
   const envKey = process.env.COVAL_API_KEY;
   if (envKey) return envKey;
 
@@ -19,12 +19,12 @@ export async function getApiKey(): Promise<string> {
   }
 
   return result;
-}
+};
 
 export type VerifyResult = 'ok' | 'invalid' | 'network_error';
 
 /** Verify an API key. Distinguishes auth failure from network issues. */
-export async function verifyApiKey(apiKey: string): Promise<VerifyResult> {
+export const verifyApiKey = async (apiKey: string): Promise<VerifyResult> => {
   try {
     const res = await fetch(COVAL_AGENTS_ENDPOINT, {
       headers: { 'x-api-key': apiKey },
@@ -34,4 +34,4 @@ export async function verifyApiKey(apiKey: string): Promise<VerifyResult> {
   } catch {
     return 'network_error';
   }
-}
+};

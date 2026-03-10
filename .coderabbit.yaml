@@ -30,6 +30,7 @@ reviews:
         ## TypeScript
         - Strict mode, no `any`, no `console.log` in library code
         - Named exports only; no default exports except entry point
+        - `export const fn = (...) =>` for all functions — no `function` declarations
         - throw new Error(), not strings
         - Type errors as unknown, use instanceof Error
         - No magic numbers/strings — use named constants from src/constants.ts
@@ -37,7 +38,7 @@ reviews:
 
         ## Style
         - Single quotes, trailing commas, 100-char line width
-        - camelCase: vars/functions. PascalCase: types. kebab-case: files
+        - camelCase: vars/functions/files. PascalCase: types
         - No unused imports or variables
 
         ## Testing

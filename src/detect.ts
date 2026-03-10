@@ -4,24 +4,24 @@ import { PROJECT_FILES, ENTRY_POINT_NAMES } from './constants.js';
 import type { Framework, DetectionResult } from './types.js';
 
 /** Safely read a file, returning null on error. */
-function tryRead(path: string): string | null {
+const tryRead = (path: string): string | null => {
   try {
     return readFileSync(path, 'utf-8');
   } catch {
     return null;
   }
-}
+};
 
 /** Find the first project manifest file that exists. */
-export function detectPythonProject(dir: string): string | null {
+export const detectPythonProject = (dir: string): string | null => {
   for (const f of PROJECT_FILES) {
     if (existsSync(join(dir, f))) return f;
   }
   return null;
-}
+};
 
 /** Determine framework from dependency files and Python imports. */
-export function detectFramework(dir: string): Framework {
+export const detectFramework = (dir: string): Framework => {
   // Check dependency manifests
   for (const f of PROJECT_FILES) {
     const content = tryRead(join(dir, f));
@@ -43,10 +43,10 @@ export function detectFramework(dir: string): Framework {
   }
 
   return 'generic';
-}
+};
 
 /** Find the most likely entry point file. */
-export function findEntryPoint(dir: string): string | null {
+export const findEntryPoint = (dir: string): string | null => {
   for (const name of ENTRY_POINT_NAMES) {
     if (existsSync(join(dir, name))) return name;
   }
@@ -62,20 +62,20 @@ export function findEntryPoint(dir: string): string | null {
   }
 
   return null;
-}
+};
 
 /** Collect contents of any project manifest files for LLM context. */
-function gatherAdditionalFiles(dir: string): Record<string, string> {
+const gatherAdditionalFiles = (dir: string): Record<string, string> => {
   const files: Record<string, string> = {};
   for (const f of PROJECT_FILES) {
     const content = tryRead(join(dir, f));
     if (content) files[f] = content;
   }
   return files;
-}
+};
 
 /** Run full project detection: find project file, framework, and entry point. */
-export function detect(dir: string): DetectionResult | null {
+export const detect = (dir: string): DetectionResult | null => {
   const projectFile = detectPythonProject(dir);
   if (!projectFile) return null;
 
@@ -89,4 +89,4 @@ export function detect(dir: string): DetectionResult | null {
     projectFile,
     additionalFiles: gatherAdditionalFiles(dir),
   };
-}
+};

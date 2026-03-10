@@ -4,7 +4,7 @@ import chalk from 'chalk';
 import * as p from '@clack/prompts';
 import { MAX_FILE_SIZE_BYTES } from './constants.js';
 
-export function readFile(path: string): string {
+export const readFile = (path: string): string => {
   const content = readFileSync(path, 'utf-8');
   const byteLength = Buffer.byteLength(content, 'utf-8');
   if (byteLength > MAX_FILE_SIZE_BYTES) {
@@ -12,17 +12,17 @@ export function readFile(path: string): string {
     p.log.warn(chalk.yellow(`${path} is ${sizeKB}KB — large files may reduce LLM quality`));
   }
   return content;
-}
+};
 
 /** Create a `.bak` copy of a file. Returns the backup path. */
-export function backupFile(path: string): string {
+export const backupFile = (path: string): string => {
   const bakPath = `${path}.bak`;
   copyFileSync(path, bakPath);
   return bakPath;
-}
+};
 
 /** Print a colored unified diff to stdout. */
-export function showDiff(original: string, modified: string, filename: string): void {
+export const showDiff = (original: string, modified: string, filename: string): void => {
   const patch = createTwoFilesPatch(`a/${filename}`, `b/${filename}`, original, modified);
   for (const line of patch.split('\n')) {
     if (line.startsWith('+') && !line.startsWith('+++')) {
@@ -35,12 +35,10 @@ export function showDiff(original: string, modified: string, filename: string): 
       console.log(line);
     }
   }
-}
+};
 
-export function writeFile(path: string, content: string): void {
+export const writeFile = (path: string, content: string): void => {
   writeFileSync(path, content, 'utf-8');
-}
+};
 
-export function fileExists(path: string): boolean {
-  return existsSync(path);
-}
+export const fileExists = (path: string): boolean => existsSync(path);

@@ -1,7 +1,7 @@
 import { COVAL_TRACES_ENDPOINT } from './constants.js';
 
 /** Send a minimal OTLP test span to verify API connectivity. */
-export async function sendTestSpan(apiKey: string): Promise<boolean> {
+export const sendTestSpan = async (apiKey: string): Promise<boolean> => {
   const now = Date.now();
   const traceId = now.toString(16).padStart(32, '0');
   const spanId = now.toString(16).padStart(16, '0').slice(-16);
@@ -50,4 +50,4 @@ export async function sendTestSpan(apiKey: string): Promise<boolean> {
   } catch {
     return false;
   }
-}
+};

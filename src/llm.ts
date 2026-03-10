@@ -15,7 +15,7 @@ import type { Framework, WizardLLMResponse } from './types.js';
  * - `WIZARD_LLM_PROVIDER` — `anthropic` | `openai` | `gemini` (default: `anthropic`)
  * - `WIZARD_LLM_MODEL` — override the default model for the provider
  */
-function resolveLLMConfig() {
+const resolveLLMConfig = () => {
   const key = process.env.WIZARD_LLM_KEY;
   if (!key) return null;
 
@@ -28,19 +28,19 @@ function resolveLLMConfig() {
   const model = process.env.WIZARD_LLM_MODEL ?? defaults.model;
 
   return { key, provider, model, endpoint: defaults.endpoint };
-}
+};
 
 /**
  * Call the LLM to generate tracing code for the user's agent.
  * Routes to a direct provider (if WIZARD_LLM_KEY set) or the Coval proxy.
  */
-export async function callWizardLLM(opts: {
+export const callWizardLLM = async (opts: {
   apiKey: string;
   framework: Framework;
   entryPointPath: string;
   entryPointContent: string;
   additionalFiles: Record<string, string>;
-}): Promise<WizardLLMResponse> {
+}): Promise<WizardLLMResponse> => {
   const systemPrompt = buildSystemPrompt(opts.framework);
   const userPrompt = buildUserPrompt(opts);
 
@@ -51,7 +51,7 @@ export async function callWizardLLM(opts: {
   }
 
   return callCovalProxy(opts.apiKey, systemPrompt, userPrompt);
-}
+};
 
 // ---------------------------------------------------------------------------
 // Provider adapters — each returns the raw text from the LLM
@@ -59,11 +59,11 @@ export async function callWizardLLM(opts: {
 
 type ProviderConfig = NonNullable<ReturnType<typeof resolveLLMConfig>>;
 
-async function callProvider(
+const callProvider = async (
   config: ProviderConfig,
   systemPrompt: string,
   userPrompt: string,
-): Promise<string> {
+): Promise<string> => {
   switch (config.provider) {
     case 'anthropic':
       return callAnthropic(config, systemPrompt, userPrompt);
@@ -72,13 +72,13 @@ async function callProvider(
     case 'gemini':
       return callGemini(config, systemPrompt, userPrompt);
   }
-}
+};
 
-async function callAnthropic(
+const callAnthropic = async (
   config: ProviderConfig,
   systemPrompt: string,
   userPrompt: string,
-): Promise<string> {
+): Promise<string> => {
   const res = await fetchJson(config.endpoint, {
     headers: {
       'Content-Type': 'application/json',
@@ -97,13 +97,13 @@ async function callAnthropic(
   const textBlock = msg.content?.find((b) => b.type === 'text');
   if (!textBlock?.text) throw new Error('No text in Anthropic response');
   return textBlock.text;
-}
+};
 
-async function callOpenAI(
+const callOpenAI = async (
   config: ProviderConfig,
   systemPrompt: string,
   userPrompt: string,
-): Promise<string> {
+): Promise<string> => {
   const res = await fetchJson(config.endpoint, {
     headers: {
       'Content-Type': 'application/json',
@@ -123,13 +123,13 @@ async function callOpenAI(
   const text = msg.choices?.[0]?.message?.content;
   if (!text) throw new Error('No text in OpenAI response');
   return text;
-}
+};
 
-async function callGemini(
+const callGemini = async (
   config: ProviderConfig,
   systemPrompt: string,
   userPrompt: string,
-): Promise<string> {
+): Promise<string> => {
   const url = `${config.endpoint}/${config.model}:generateContent?key=${config.key}`;
 
   const res = await fetchJson(url, {
@@ -145,32 +145,32 @@ async function callGemini(
   const text = msg.candidates?.[0]?.content?.parts?.[0]?.text;
   if (!text) throw new Error('No text in Gemini response');
   return text;
-}
+};
 
 // ---------------------------------------------------------------------------
 // Coval proxy fallback
 // ---------------------------------------------------------------------------
 
-async function callCovalProxy(
+const callCovalProxy = async (
   apiKey: string,
   systemPrompt: string,
   userPrompt: string,
-): Promise<WizardLLMResponse> {
+): Promise<WizardLLMResponse> => {
   const data = await fetchJson(COVAL_WIZARD_ENDPOINT, {
     headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey },
     body: { system: systemPrompt, user: userPrompt },
   });
   return validateResponse(data);
-}
+};
 
 // ---------------------------------------------------------------------------
 // Shared utilities
 // ---------------------------------------------------------------------------
 
-async function fetchJson(
+const fetchJson = async (
   url: string,
   opts: { headers: Record<string, string>; body: unknown },
-): Promise<unknown> {
+): Promise<unknown> => {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), LLM_TIMEOUT_MS);
 
@@ -197,10 +197,10 @@ async function fetchJson(
   }
 
   return res.json();
-}
+};
 
 /** Extract JSON from LLM text that may be wrapped in a fenced code block. */
-export function extractJson(text: string): unknown {
+export const extractJson = (text: string): unknown => {
   const fenced = text.match(/```(?:json)?\s*\n?([\s\S]*?)\n?```/);
   const raw = fenced ? fenced[1] : text;
   try {
@@ -210,10 +210,10 @@ export function extractJson(text: string): unknown {
       `Failed to parse LLM response as JSON: ${err instanceof Error ? err.message : err}`,
     );
   }
-}
+};
 
 /** Validate that LLM output has the required shape with string values. */
-export function validateResponse(data: unknown): WizardLLMResponse {
+export const validateResponse = (data: unknown): WizardLLMResponse => {
   if (
     typeof data !== 'object' ||
     data === null ||
@@ -234,4 +234,4 @@ export function validateResponse(data: unknown): WizardLLMResponse {
   }
 
   return { coval_tracing_py, modified_entry_point, explanation };
-}
+};

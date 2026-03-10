@@ -358,7 +358,7 @@ const FRAMEWORK_RULES: Record<Framework, string> = {
 // ---------------------------------------------------------------------------
 
 /** Build the system prompt with reference implementation and framework rules. */
-export function buildSystemPrompt(framework: Framework): string {
+export const buildSystemPrompt = (framework: Framework): string => {
   return `You are an expert Python developer specializing in OpenTelemetry instrumentation.
 Your task is to add Coval tracing to a user's AI agent codebase.
 
@@ -389,12 +389,12 @@ Return ONLY valid JSON with these exact keys:
 }
 
 /** Build the user prompt with the entry point and dependency context. */
-export function buildUserPrompt(opts: {
+export const buildUserPrompt = (opts: {
   framework: Framework;
   entryPointPath: string;
   entryPointContent: string;
   additionalFiles: Record<string, string>;
-}): string {
+}): string => {
   const parts = [
     `Add Coval tracing to this ${opts.framework} agent project.`,
     `\nEntry point file (${opts.entryPointPath}):\n\`\`\`python\n${opts.entryPointContent}\n\`\`\``,
