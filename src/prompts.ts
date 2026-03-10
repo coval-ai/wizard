@@ -336,14 +336,15 @@ const FRAMEWORK_RULES: Record<Framework, string> = {
 - Inject \`setup_coval_tracing()\` BEFORE \`AgentSession()\` or \`VoicePipelineAgent()\` construction
 - Extract the simulation ID from the SIP participant attributes:
   \`\`\`python
-  async def _check_sim_id(participant):
+  def _check_sim_id(participant):
       sim_id = participant.attributes.get("sip.h.X-Coval-Simulation-Id")
       if sim_id:
           set_simulation_id(sim_id)
 
-  ctx.room.on("participant_connected", lambda p: asyncio.ensure_future(_check_sim_id(p)))
-  ctx.room.on("participant_attributes_changed", lambda old, p: asyncio.ensure_future(_check_sim_id(p)))
+  ctx.room.on("participant_connected", _check_sim_id)
+  ctx.room.on("participant_attributes_changed", lambda old, p: _check_sim_id(p))
   \`\`\`
+- Do NOT use \`asyncio.ensure_future\` — \`set_simulation_id\` is synchronous, so \`_check_sim_id\` must be a plain \`def\`
 - After \`await session.start()\`, add \`instrument_session(session)\`
 - Import \`instrument_session\` from \`coval_tracing\` alongside \`setup_coval_tracing\` and \`set_simulation_id\``,
 
