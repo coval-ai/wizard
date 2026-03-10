@@ -1,8 +1,10 @@
 export type { Framework, LLMProvider } from './constants.js'
 
+import type { Framework } from './constants.js'
+
 /** Result of scanning a project directory for Python agent code. */
 export type DetectionResult = {
-  framework: string
+  framework: Framework
   entryPointPath: string
   projectFile: string
   additionalFiles: Record<string, string>
