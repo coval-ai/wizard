@@ -104,7 +104,7 @@ Releases are fully automatic on every merge to `main`. No manual version bumps o
    |---|---|---|
    | `feat:` | minor (`1.x.0`) | `feat: add gemini support` |
    | `fix:` / `perf:` | patch (`1.0.x`) | `fix: handle 403 as invalid key` |
-   | `feat!:` / `fix!:` | major (`x.0.0`) | `feat!: redesign CLI interface` |
+   | `feat!:` / `fix!:` | major (`x.0.0`) | `feat!: redesign CLI` |
    | `chore:` / `ci:` / `docs:` | no release | — |
 
 2. **Linear ticket prefixes are stripped automatically.** A PR titled `[SIM-123] feat: add something` is treated identically to `feat: add something`.

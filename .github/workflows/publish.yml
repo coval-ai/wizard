@@ -34,6 +34,7 @@ jobs:
           tar -tzf "$TARBALL" | grep -q "package/dist/index.js"
           mkdir -p /tmp/wizard-smoke
           npm install --prefix /tmp/wizard-smoke "$PWD/$TARBALL"
+          # exits non-zero when invoked without config — that's expected; we only verify the bin is executable
           /tmp/wizard-smoke/node_modules/.bin/coval-wizard 2>&1 || true
           rm -f "$TARBALL"
 
