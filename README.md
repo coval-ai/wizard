@@ -92,15 +92,26 @@ The wizard sends your entry point code to the configured LLM with a detailed sys
 
 The LLM returns the modified entry point and a `coval_tracing.py` tailored to your agent. The wizard shows the diff, asks for confirmation, then writes the files.
 
-## Publishing
+## Releases & Publishing
 
-Version bumps in `package.json` on `main` trigger automatic npm publish via GitHub Actions.
+Releases are fully automatic on every merge to `main`. No manual version bumps or tags needed.
 
-```bash
-# Bump version and push
-npm version patch  # or minor, major
-git push && git push --tags
-```
+### How it works
+
+1. **Merge a PR** with a conventional commit title — the squash-merge commit message determines the version bump:
+
+   | Commit prefix | Bump | Example |
+   |---|---|---|
+   | `feat:` | minor (`1.x.0`) | `feat: add gemini support` |
+   | `fix:` / `perf:` | patch (`1.0.x`) | `fix: handle 403 as invalid key` |
+   | `feat!:` / `fix!:` | major (`x.0.0`) | `feat!: redesign CLI interface` |
+   | `chore:` / `ci:` / `docs:` | no release | — |
+
+2. **Linear ticket prefixes are stripped automatically.** A PR titled `[SIM-123] feat: add something` is treated identically to `feat: add something`.
+
+3. A **GitHub Release** is created with auto-generated notes.
+
+4. The GitHub Release triggers **npm publish** — the package is built and published with the release tag as the version.
 
 ## License
 
