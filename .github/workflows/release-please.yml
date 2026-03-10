@@ -23,7 +23,7 @@ jobs:
       - name: Determine release type
         id: release
         run: |
-          LAST_TAG=$(git tag --sort=-v:refname | head -1)
+          LAST_TAG=$(git tag --sort=-v:refname --merged HEAD | head -1)
 
           if [ -z "$LAST_TAG" ]; then
             COMMITS=$(git log --format="%s")
@@ -74,4 +74,5 @@ jobs:
         run: |
           gh release create "${{ steps.version.outputs.tag }}" \
             --title "${{ steps.version.outputs.tag }}" \
+            --target "${GITHUB_SHA}" \
             --generate-notes
