@@ -28,6 +28,7 @@ export async function verifyApiKey(apiKey: string): Promise<VerifyResult> {
   try {
     const res = await fetch(COVAL_AGENTS_ENDPOINT, {
       headers: { 'x-api-key': apiKey },
+      signal: AbortSignal.timeout(10_000),
     });
     return res.ok ? 'ok' : 'invalid';
   } catch {

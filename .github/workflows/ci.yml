@@ -28,6 +28,6 @@ jobs:
       - run: npm test
       - run: npm run build
 
-      # Smoke test: binary loads without crashing
+      # Smoke test: verify the module loads without import errors
       - name: Smoke test
-        run: node -e "import('./dist/index.js')" 2>&1 | head -1
+        run: node --input-type=module --eval "import('./dist/index.js').catch(e => { process.stderr.write(e.message); process.exit(1); })"

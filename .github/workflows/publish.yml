@@ -22,7 +22,15 @@ jobs:
         id: check
         run: |
           COMMITTED=$(node -p "require('./package.json').version")
-          PUBLISHED=$(npm view @coval/wizard version 2>/dev/null || echo "0.0.0")
+          if npm view @coval/wizard version > /tmp/npm_version.txt 2>/tmp/npm_err.txt; then
+            PUBLISHED=$(cat /tmp/npm_version.txt | tr -d '[:space:]')
+          elif grep -qiE "E404|not found" /tmp/npm_err.txt; then
+            PUBLISHED="0.0.0"
+          else
+            echo "npm registry error:"
+            cat /tmp/npm_err.txt
+            exit 1
+          fi
           echo "committed-version=$COMMITTED" >> $GITHUB_OUTPUT
           if [ "$COMMITTED" != "$PUBLISHED" ]; then
             echo "is-new-version=true" >> $GITHUB_OUTPUT

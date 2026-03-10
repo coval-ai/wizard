@@ -1,29 +1,13 @@
 # Wizard Style Guide
 
-## TypeScript Conventions
-- Strict mode, ES2022 target
-- Single quotes, trailing commas, 100-char line width (see `.prettierrc`)
-- Prefer `type` over `interface` for simple shapes
-- Use named exports; no default exports except entry point
-- Shared types in `src/types.ts`, constants in `src/constants.ts`
+**Read `.coderabbit.yaml` for all code style rules.** It contains path-specific instructions for TypeScript, tests, and CI workflows.
 
-## File Naming
-- `kebab-case.ts` for files
-- `__tests__/` directory co-located with source
-- Test files: `*.test.ts`
-
-## Code Patterns
-- `tryRead()` pattern for safe file reads (return null on error)
-- Constants for all API URLs and magic values
-- No `console.log` in library code — use `@clack/prompts` for user output
-- JSDoc only where it adds value (not obvious from name/types)
-
-## Commit Format
-- Conventional commits: `feat:`, `fix:`, `chore:`, `docs:`
-- No AI attribution in commits
-
-## Testing
-- Vitest with globals
-- Real temp directories for filesystem tests (no mocking fs)
-- `vi.spyOn(globalThis, 'fetch')` for network tests
-- Test the contract, not the implementation
+Key points:
+- Strict TypeScript: no `any`, no unused imports, no `console.log` in library code
+- `type` over `interface` for simple shapes
+- Named exports; no default exports except entry point
+- AbortSignal.timeout() for all outbound fetch calls
+- Constants for all API URLs and magic values (`src/constants.ts`, `src/types.ts`)
+- `@clack/prompts` for all user output (no `console.log` in library code)
+- Vitest with real temp directories for filesystem tests
+- Conventional commits: `feat:`, `fix:`, `chore:`, `docs:`, no AI attribution

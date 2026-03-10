@@ -1,0 +1,81 @@
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+tone_instructions: Be direct. No pleasantries, no filler. Point out the issue, state why it matters, suggest the fix
+inheritance: true
+reviews:
+  profile: assertive
+  high_level_summary_instructions: >-
+    Bullet-point list: features, fixes, refactors. Max 5 bullets. Breaking changes first. Follow
+    with a table: filename | change type | lines added/removed. Skip files under 5 lines changed.
+  auto_title_placeholder: "@autotitle"
+  auto_title_instructions: conventional commits v1 style
+  review_status: false
+  commit_status: false
+  collapse_walkthrough: false
+  changed_files_summary: false
+  sequence_diagrams: false
+  estimate_code_review_effort: false
+  assess_linked_issues: false
+  related_issues: false
+  suggested_labels: false
+  suggested_reviewers: false
+  in_progress_fortune: false
+  poem: false
+  path_filters:
+    - "**/*"
+    - "!node_modules/**"
+    - "!dist/**"
+  path_instructions:
+    - path: "**/*.ts"
+      instructions: |
+        ## TypeScript
+        - Strict mode, no `any`, no `console.log` in library code
+        - Named exports only; no default exports except entry point
+        - throw new Error(), not strings
+        - Type errors as unknown, use instanceof Error
+        - No magic numbers/strings — use named constants from src/constants.ts
+        - AbortSignal.timeout() for all outbound fetch calls
+
+        ## Style
+        - Single quotes, trailing commas, 100-char line width
+        - camelCase: vars/functions. PascalCase: types. kebab-case: files
+        - No unused imports or variables
+
+        ## Testing
+        - Vitest; real temp dirs for filesystem tests (no mocking fs)
+        - vi.spyOn(globalThis, 'fetch') for network tests
+        - Test the contract, not the implementation
+    - path: "src/__tests__/**/*.ts"
+      instructions: |
+        - Cover both happy path and error cases
+        - Test type validation (wrong types should throw, not just missing keys)
+        - Keep tests focused and fast
+    - path: ".github/workflows/**"
+      instructions: |
+        - Pin actions to specific versions (e.g. actions/checkout@v4)
+        - Never swallow failures with `|| true` unless explicitly justified
+        - Publish jobs must run full quality checks before npm publish
+        - npm version checks must fail closed on registry errors (not treat all errors as 0.0.0)
+  finishing_touches:
+    docstrings:
+      enabled: false
+  pre_merge_checks:
+    docstrings:
+      mode: "off"
+    title:
+      mode: error
+      requirements: >-
+        PR titles should follow Conventional Commits v1.0.0:
+        <type>[optional scope]: <description>. Allowed types: feat, fix, chore, docs, style,
+        refactor, perf, test, build, ci. Or use a Linear ticket format: [COV-XXXX] Description.
+    description:
+      mode: "off"
+    issue_assessment:
+      mode: "off"
+chat:
+  art: false
+  integrations:
+    linear:
+      usage: enabled
+issue_enrichment:
+  auto_enrich:
+    enabled: true
