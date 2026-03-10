@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+
 import { buildSystemPrompt, buildUserPrompt } from '../prompts.js';
 
 describe('buildSystemPrompt', () => {

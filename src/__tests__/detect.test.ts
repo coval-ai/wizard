@@ -1,7 +1,7 @@
 import { mkdtempSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import { describe, it, expect } from 'vitest';
+
 import { detectPythonProject, detectFramework, findEntryPoint, detect } from '../detect.js';
 
 function makeTempDir(): string {
@@ -163,7 +163,7 @@ describe('detect (full pipeline)', () => {
     expect(result!.framework).toBe('livekit');
     expect(result!.entryPointPath).toBe('agent.py');
     expect(result!.projectFile).toBe('pyproject.toml');
-    expect(result!.additionalFiles).toHaveProperty('pyproject.toml');
+    expect(result!.additionalFiles['pyproject.toml']).toBeDefined();
   });
 
   it('returns null without a project file', () => {

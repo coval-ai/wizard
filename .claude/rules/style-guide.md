@@ -11,5 +11,5 @@ Key points:
 - AbortSignal.timeout() for all outbound fetch calls
 - Constants for all API URLs and magic values (`src/constants.ts`, `src/types.ts`)
 - `@clack/prompts` for all user output (no `console.log` in library code)
-- Vitest with real temp directories for filesystem tests
+- Jest with real temp directories for filesystem tests
 - Conventional commits: `feat:`, `fix:`, `chore:`, `docs:`, no AI attribution

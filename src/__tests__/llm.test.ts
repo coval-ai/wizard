@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { jest } from '@jest/globals';
 import { validateResponse, extractJson, callWizardLLM } from '../llm.js';
 import { COVAL_WIZARD_ENDPOINT, LLM_DEFAULTS } from '../constants.js';
 
@@ -16,11 +16,8 @@ const CALL_OPTS = {
   additionalFiles: {},
 };
 
-function mockFetchOk(responseBody: unknown) {
-  return vi
-    .spyOn(globalThis, 'fetch')
-    .mockResolvedValue(new Response(JSON.stringify(responseBody)));
-}
+const mockFetchOk = (responseBody: unknown) =>
+  jest.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify(responseBody)));
 
 describe('callWizardLLM provider routing', () => {
   const savedEnv: Record<string, string | undefined> = {};
@@ -29,7 +26,7 @@ describe('callWizardLLM provider routing', () => {
     savedEnv.WIZARD_LLM_KEY = process.env.WIZARD_LLM_KEY;
     savedEnv.WIZARD_LLM_PROVIDER = process.env.WIZARD_LLM_PROVIDER;
     savedEnv.WIZARD_LLM_MODEL = process.env.WIZARD_LLM_MODEL;
-    vi.restoreAllMocks();
+    jest.restoreAllMocks();
   });
 
   afterEach(() => {
@@ -121,7 +118,9 @@ describe('callWizardLLM provider routing', () => {
 
   it('throws on non-OK HTTP response', async () => {
     delete process.env.WIZARD_LLM_KEY;
-    vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response('Unauthorized', { status: 401 }));
+    jest
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValue(new Response('Unauthorized', { status: 401 }));
 
     await expect(callWizardLLM(CALL_OPTS)).rejects.toThrow('LLM API error (401)');
   });

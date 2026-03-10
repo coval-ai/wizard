@@ -1,13 +1,11 @@
 import { mkdtempSync, writeFileSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { jest } from '@jest/globals';
 import { readFile, backupFile, writeFile, fileExists, showDiff } from '../files.js';
 import { MAX_FILE_SIZE_BYTES } from '../constants.js';
 
-function makeTempDir(): string {
-  return mkdtempSync(join(tmpdir(), 'wizard-files-test-'));
-}
+const makeTempDir = (): string => mkdtempSync(join(tmpdir(), 'wizard-files-test-'));
 
 describe('readFile', () => {
   it('reads file content as utf-8', () => {
@@ -103,11 +101,11 @@ describe('fileExists', () => {
 
 describe('showDiff', () => {
   beforeEach(() => {
-    vi.restoreAllMocks();
+    jest.restoreAllMocks();
   });
 
   it('prints added lines in green and removed lines in red', () => {
-    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+    const logSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
 
     showDiff('line1\nline2\n', 'line1\nline3\n', 'test.py');
 
@@ -119,7 +117,7 @@ describe('showDiff', () => {
   });
 
   it('handles identical files without crashing', () => {
-    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+    const logSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
     showDiff('same\n', 'same\n', 'test.py');
     // Should complete without throwing
     logSpy.mockRestore();

@@ -15,8 +15,8 @@
     "lint:fix": "eslint src --ext .ts --fix",
     "format": "prettier --write 'src/**/*.ts'",
     "format:check": "prettier --check 'src/**/*.ts'",
-    "test": "vitest run",
-    "test:watch": "vitest",
+    "test": "NODE_OPTIONS=--experimental-vm-modules jest",
+    "test:watch": "NODE_OPTIONS=--experimental-vm-modules jest --watch",
     "typecheck": "tsc --noEmit",
     "prepublishOnly": "npm run build",
     "check": "npm run typecheck && npm run lint && npm run format:check && npm run test"
@@ -31,16 +31,18 @@
   },
   "devDependencies": {
     "@types/diff": "^6.0.0",
+    "@types/jest": "^30.0.0",
     "@types/node": "^22.13.0",
     "@typescript-eslint/eslint-plugin": "^8.0.0",
     "@typescript-eslint/parser": "^8.0.0",
     "eslint": "^8.57.0",
     "eslint-config-prettier": "^10.0.0",
+    "jest": "^30.3.0",
     "prettier": "^3.5.0",
+    "ts-jest": "^29.4.6",
     "tsup": "^8.4.0",
     "tsx": "^4.19.0",
-    "typescript": "^5.7.0",
-    "vitest": "^3.0.0"
+    "typescript": "^5.7.0"
   },
   "engines": {
     "node": ">=18"

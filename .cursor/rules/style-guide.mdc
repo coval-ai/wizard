@@ -15,5 +15,5 @@ Key points:
 - camelCase for file names (e.g. `myModule.ts`, not `my-module.ts`)
 - AbortSignal.timeout() for all outbound fetch calls
 - Named constants for all API URLs and magic values (src/constants.ts)
-- Vitest: real temp dirs for filesystem tests, vi.spyOn for network tests
+- Jest: real temp dirs for filesystem tests, jest.spyOn for network tests
 - Conventional commits format, no AI attribution

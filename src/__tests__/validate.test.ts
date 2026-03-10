@@ -1,33 +1,33 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { jest } from '@jest/globals';
 import { sendTestSpan } from '../validate.js';
 
 describe('sendTestSpan', () => {
   beforeEach(() => {
-    vi.restoreAllMocks();
+    jest.restoreAllMocks();
   });
 
   it('returns true on 200', async () => {
-    vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response('', { status: 200 }));
+    jest.spyOn(globalThis, 'fetch').mockResolvedValue(new Response('', { status: 200 }));
     expect(await sendTestSpan('test-key')).toBe(true);
   });
 
   it('returns true on 404 (auth OK, sim not found)', async () => {
-    vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response('', { status: 404 }));
+    jest.spyOn(globalThis, 'fetch').mockResolvedValue(new Response('', { status: 404 }));
     expect(await sendTestSpan('test-key')).toBe(true);
   });
 
   it('returns false on 401', async () => {
-    vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response('', { status: 401 }));
+    jest.spyOn(globalThis, 'fetch').mockResolvedValue(new Response('', { status: 401 }));
     expect(await sendTestSpan('test-key')).toBe(false);
   });
 
   it('returns false on network error', async () => {
-    vi.spyOn(globalThis, 'fetch').mockRejectedValue(new Error('network'));
+    jest.spyOn(globalThis, 'fetch').mockRejectedValue(new Error('network'));
     expect(await sendTestSpan('test-key')).toBe(false);
   });
 
   it('sends correct headers', async () => {
-    const mockFetch = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(''));
+    const mockFetch = jest.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(''));
     await sendTestSpan('my-key');
 
     const [, init] = mockFetch.mock.calls[0];

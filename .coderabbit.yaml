@@ -42,8 +42,8 @@ reviews:
         - No unused imports or variables
 
         ## Testing
-        - Vitest; real temp dirs for filesystem tests (no mocking fs)
-        - vi.spyOn(globalThis, 'fetch') for network tests
+        - Jest; real temp dirs for filesystem tests (no mocking fs)
+        - jest.spyOn(globalThis, 'fetch') for network tests
         - Test the contract, not the implementation
     - path: "src/__tests__/**/*.ts"
       instructions: |
