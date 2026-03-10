@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 
 import { resolve, join } from 'node:path'
+import { realpathSync } from 'node:fs'
+import { fileURLToPath } from 'node:url'
 import * as p from '@clack/prompts'
 import chalk from 'chalk'
 import { getApiKey, verifyApiKey } from './auth.js'
@@ -141,9 +143,15 @@ const main = async () => {
   p.outro("You're all set!")
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
-  main().catch((err) => {
-    console.error(chalk.red(err.message || err))
-    process.exit(1)
-  })
+try {
+  const realSelf = realpathSync(fileURLToPath(import.meta.url))
+  const realArgv = realpathSync(process.argv[1] ?? '')
+  if (realSelf === realArgv) {
+    main().catch((err) => {
+      console.error(chalk.red(err.message || err))
+      process.exit(1)
+    })
+  }
+} catch {
+  // not the entry point — imported as a module
 }
