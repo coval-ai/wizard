@@ -1,22 +1,18 @@
-import { readFileSync, readdirSync, existsSync } from "node:fs";
-import { join } from "node:path";
+import { readFileSync, readdirSync, existsSync } from 'node:fs';
+import { join } from 'node:path';
+import { PROJECT_FILES, ENTRY_POINT_NAMES } from './constants.js';
+import type { Framework, DetectionResult } from './types.js';
 
-export type Framework = "pipecat" | "livekit" | "generic";
-
-export interface DetectionResult {
-  framework: Framework;
-  entryPointPath: string;
-  projectFile: string;
-  additionalFiles: Record<string, string>;
+/** Safely read a file, returning null on error. */
+function tryRead(path: string): string | null {
+  try {
+    return readFileSync(path, 'utf-8');
+  } catch {
+    return null;
+  }
 }
 
-const PROJECT_FILES = [
-  "pyproject.toml",
-  "requirements.txt",
-  "Pipfile",
-  "setup.py",
-];
-
+/** Find the first project manifest file that exists. */
 export function detectPythonProject(dir: string): string | null {
   for (const f of PROJECT_FILES) {
     if (existsSync(join(dir, f))) return f;
@@ -24,50 +20,61 @@ export function detectPythonProject(dir: string): string | null {
   return null;
 }
 
+/** Determine framework from dependency files and Python imports. */
 export function detectFramework(dir: string): Framework {
-  // Check dependency files for framework imports
+  // Check dependency manifests
   for (const f of PROJECT_FILES) {
-    const path = join(dir, f);
-    if (!existsSync(path)) continue;
-    try {
-      const content = readFileSync(path, "utf-8");
-      if (/pipecat[-_]ai|pipecat/.test(content)) return "pipecat";
-      if (/livekit[-_]agents|livekit/.test(content)) return "livekit";
-    } catch {}
+    const content = tryRead(join(dir, f));
+    if (!content) continue;
+    if (/pipecat[-_]ai|"pipecat"/.test(content)) return 'pipecat';
+    if (/livekit[-_]agents|"livekit"/.test(content)) return 'livekit';
   }
 
-  // Scan .py files in root for imports
+  // Scan .py files for framework imports
   try {
-    const files = readdirSync(dir).filter((f) => f.endsWith(".py"));
-    for (const f of files) {
-      try {
-        const content = readFileSync(join(dir, f), "utf-8");
-        if (/from pipecat|import pipecat/.test(content)) return "pipecat";
-        if (/from livekit|import livekit/.test(content)) return "livekit";
-      } catch {}
+    for (const f of readdirSync(dir).filter((f) => f.endsWith('.py'))) {
+      const content = tryRead(join(dir, f));
+      if (!content) continue;
+      if (/from pipecat|import pipecat/.test(content)) return 'pipecat';
+      if (/from livekit|import livekit/.test(content)) return 'livekit';
     }
-  } catch {}
+  } catch {
+    // directory not readable
+  }
 
-  return "generic";
+  return 'generic';
 }
 
+/** Find the most likely entry point file. */
 export function findEntryPoint(dir: string): string | null {
-  // Prefer known names
-  for (const name of ["agent.py", "main.py", "bot.py", "app.py"]) {
+  for (const name of ENTRY_POINT_NAMES) {
     if (existsSync(join(dir, name))) return name;
   }
 
-  // Fall back to single .py file
+  // Fall back to sole .py file in root
   try {
     const pyFiles = readdirSync(dir).filter(
-      (f) => f.endsWith(".py") && !f.startsWith("_") && f !== "coval_tracing.py"
+      (f) => f.endsWith('.py') && !f.startsWith('_') && f !== 'coval_tracing.py',
     );
     if (pyFiles.length === 1) return pyFiles[0];
-  } catch {}
+  } catch {
+    // directory not readable
+  }
 
   return null;
 }
 
+/** Collect contents of any project manifest files for LLM context. */
+function gatherAdditionalFiles(dir: string): Record<string, string> {
+  const files: Record<string, string> = {};
+  for (const f of PROJECT_FILES) {
+    const content = tryRead(join(dir, f));
+    if (content) files[f] = content;
+  }
+  return files;
+}
+
+/** Run full project detection: find project file, framework, and entry point. */
 export function detect(dir: string): DetectionResult | null {
   const projectFile = detectPythonProject(dir);
   if (!projectFile) return null;
@@ -76,16 +83,10 @@ export function detect(dir: string): DetectionResult | null {
   const entryPointPath = findEntryPoint(dir);
   if (!entryPointPath) return null;
 
-  // Collect additional context files
-  const additionalFiles: Record<string, string> = {};
-  for (const f of PROJECT_FILES) {
-    const path = join(dir, f);
-    if (existsSync(path)) {
-      try {
-        additionalFiles[f] = readFileSync(path, "utf-8");
-      } catch {}
-    }
-  }
-
-  return { framework, entryPointPath, projectFile, additionalFiles };
+  return {
+    framework,
+    entryPointPath,
+    projectFile,
+    additionalFiles: gatherAdditionalFiles(dir),
+  };
 }

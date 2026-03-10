@@ -1,12 +1,16 @@
-import type { Framework } from "./detect.js";
-import { buildSystemPrompt, buildUserPrompt } from "./prompts.js";
+import {
+  ANTHROPIC_API_ENDPOINT,
+  COVAL_WIZARD_ENDPOINT,
+  LLM_MODEL,
+  LLM_MAX_TOKENS,
+} from './constants.js';
+import { buildSystemPrompt, buildUserPrompt } from './prompts.js';
+import type { Framework, WizardLLMResponse } from './types.js';
 
-export interface WizardLLMResponse {
-  coval_tracing_py: string;
-  modified_entry_point: string;
-  explanation: string;
-}
-
+/**
+ * Call the LLM to generate tracing code for the user's agent.
+ * Routes to Anthropic direct (if WIZARD_LLM_KEY set) or Coval proxy.
+ */
 export async function callWizardLLM(opts: {
   apiKey: string;
   framework: Framework;
@@ -15,88 +19,83 @@ export async function callWizardLLM(opts: {
   additionalFiles: Record<string, string>;
 }): Promise<WizardLLMResponse> {
   const systemPrompt = buildSystemPrompt(opts.framework);
-  const userPrompt = buildUserPrompt({
-    framework: opts.framework,
-    entryPointPath: opts.entryPointPath,
-    entryPointContent: opts.entryPointContent,
-    additionalFiles: opts.additionalFiles,
-  });
+  const userPrompt = buildUserPrompt(opts);
 
-  // Local dev: use Anthropic SDK directly
-  if (process.env.ANTHROPIC_API_KEY) {
-    return callAnthropicDirect(systemPrompt, userPrompt);
+  const llmKey = process.env.WIZARD_LLM_KEY;
+  if (llmKey) {
+    return fetchLLM(ANTHROPIC_API_ENDPOINT, {
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': llmKey,
+        'anthropic-version': '2023-06-01',
+      },
+      body: {
+        model: LLM_MODEL,
+        max_tokens: LLM_MAX_TOKENS,
+        system: systemPrompt,
+        messages: [{ role: 'user', content: userPrompt }],
+      },
+      extractJson: extractFromAnthropicResponse,
+    });
   }
 
-  // Production: call Coval API proxy
-  return callCovalProxy(opts.apiKey, systemPrompt, userPrompt);
+  return fetchLLM(COVAL_WIZARD_ENDPOINT, {
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': opts.apiKey,
+    },
+    body: { system: systemPrompt, user: userPrompt },
+    extractJson: (data: unknown) => data,
+  });
 }
 
-async function callCovalProxy(
-  apiKey: string,
-  systemPrompt: string,
-  userPrompt: string
+/** Generic fetch-parse-validate pipeline for LLM calls. */
+async function fetchLLM(
+  url: string,
+  opts: {
+    headers: Record<string, string>;
+    body: unknown;
+    extractJson: (data: unknown) => unknown;
+  },
 ): Promise<WizardLLMResponse> {
-  const res = await fetch("https://api.coval.dev/v1/wizard/complete", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "x-api-key": apiKey,
-    },
-    body: JSON.stringify({
-      system: systemPrompt,
-      user: userPrompt,
-    }),
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: opts.headers,
+    body: JSON.stringify(opts.body),
   });
 
   if (!res.ok) {
     const body = await res.text();
-    throw new Error(`Coval API error (${res.status}): ${body}`);
+    throw new Error(`LLM API error (${res.status}): ${body}`);
   }
 
-  const data = await res.json();
-  return validateResponse(data);
+  const raw = opts.extractJson(await res.json());
+  return validateResponse(raw);
 }
 
-async function callAnthropicDirect(
-  systemPrompt: string,
-  userPrompt: string
-): Promise<WizardLLMResponse> {
-  // Dynamic import to avoid requiring the SDK in production
-  const { default: Anthropic } = await import("@anthropic-ai/sdk");
-  const client = new Anthropic();
+/** Extract text content from Anthropic Messages API response and parse JSON. */
+function extractFromAnthropicResponse(data: unknown): unknown {
+  const msg = data as { content: Array<{ type: string; text?: string }> };
+  const textBlock = msg.content?.find((b) => b.type === 'text');
+  if (!textBlock?.text) throw new Error('No text response from Claude');
 
-  const message = await client.messages.create({
-    model: "claude-sonnet-4-20250514" as any,
-    max_tokens: 8192,
-    system: systemPrompt,
-    messages: [{ role: "user", content: userPrompt }],
-  });
+  let json = textBlock.text;
+  const fenced = json.match(/```(?:json)?\s*\n?([\s\S]*?)\n?```/);
+  if (fenced) json = fenced[1];
 
-  const textBlock = message.content.find((b) => b.type === "text");
-  if (!textBlock || textBlock.type !== "text") {
-    throw new Error("No text response from Claude");
-  }
-
-  // Extract JSON from response (may be wrapped in markdown code block)
-  let jsonStr = textBlock.text;
-  const match = jsonStr.match(/```(?:json)?\s*\n?([\s\S]*?)\n?```/);
-  if (match) {
-    jsonStr = match[1];
-  }
-
-  const parsed = JSON.parse(jsonStr);
-  return validateResponse(parsed);
+  return JSON.parse(json);
 }
 
-function validateResponse(data: unknown): WizardLLMResponse {
+/** Validate that LLM output has the required shape. */
+export function validateResponse(data: unknown): WizardLLMResponse {
   if (
-    typeof data !== "object" ||
+    typeof data !== 'object' ||
     data === null ||
-    !("coval_tracing_py" in data) ||
-    !("modified_entry_point" in data) ||
-    !("explanation" in data)
+    !('coval_tracing_py' in data) ||
+    !('modified_entry_point' in data) ||
+    !('explanation' in data)
   ) {
-    throw new Error("Invalid response from LLM — missing required fields");
+    throw new Error('Invalid LLM response — missing required fields');
   }
   return data as WizardLLMResponse;
 }
