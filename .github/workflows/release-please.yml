@@ -9,7 +9,7 @@ permissions:
   contents: write
 
 concurrency:
-  group: auto-release
+  group: auto-release-${{ github.ref }}-${{ github.event_name }}
   cancel-in-progress: false
 
 jobs:
@@ -29,7 +29,7 @@ jobs:
 
           if [ -z "$LAST_TAG" ]; then
             COMMITS=$(git log --format="%s")
-            BASE_VERSION=$(node -p "require('./package.json').version")
+            BASE_VERSION=$(jq -r '.version' package.json)
           else
             COMMITS=$(git log --format="%s" "${LAST_TAG}..HEAD")
             BASE_VERSION="${LAST_TAG#v}"
@@ -69,6 +69,7 @@ jobs:
             major) V="$((M+1)).0.0" ;;
             minor) V="$M.$((N+1)).0" ;;
             patch) V="$M.$N.$((P+1))" ;;
+            *) echo "Unexpected bump type: ${{ steps.release.outputs.type }}"; exit 1 ;;
           esac
           echo "value=$V" >> "$GITHUB_OUTPUT"
           echo "tag=v$V" >> "$GITHUB_OUTPUT"
