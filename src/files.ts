@@ -1,15 +1,15 @@
 import { readFileSync, writeFileSync, copyFileSync, existsSync } from 'node:fs';
 import { createTwoFilesPatch } from 'diff';
 import chalk from 'chalk';
+import * as p from '@clack/prompts';
 import { MAX_FILE_SIZE_BYTES } from './constants.js';
 
 export function readFile(path: string): string {
   const content = readFileSync(path, 'utf-8');
-  if (content.length > MAX_FILE_SIZE_BYTES) {
-    const sizeKB = (content.length / 1024).toFixed(0);
-    console.warn(
-      chalk.yellow(`  Warning: ${path} is ${sizeKB}KB — large files may reduce LLM quality`),
-    );
+  const byteLength = Buffer.byteLength(content, 'utf-8');
+  if (byteLength > MAX_FILE_SIZE_BYTES) {
+    const sizeKB = (byteLength / 1024).toFixed(0);
+    p.log.warn(chalk.yellow(`${path} is ${sizeKB}KB — large files may reduce LLM quality`));
   }
   return content;
 }

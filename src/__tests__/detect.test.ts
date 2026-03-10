@@ -113,6 +113,43 @@ describe('findEntryPoint', () => {
     const dir = makeTempDir();
     expect(findEntryPoint(dir)).toBeNull();
   });
+
+  it('ignores underscore-prefixed .py files in fallback', () => {
+    const dir = makeTempDir();
+    touch(dir, '__init__.py');
+    touch(dir, '_helpers.py');
+    touch(dir, 'server.py');
+    expect(findEntryPoint(dir)).toBe('server.py');
+  });
+
+  it('finds bot.py and app.py in priority order', () => {
+    const dir = makeTempDir();
+    touch(dir, 'app.py');
+    touch(dir, 'bot.py');
+    expect(findEntryPoint(dir)).toBe('bot.py');
+  });
+});
+
+describe('detectFramework edge cases', () => {
+  it('detects pipecat via "pipecat" in quoted form', () => {
+    const dir = makeTempDir();
+    touch(dir, 'pyproject.toml', 'dependencies = ["pipecat"]');
+    expect(detectFramework(dir)).toBe('pipecat');
+  });
+
+  it('detects livekit via import livekit', () => {
+    const dir = makeTempDir();
+    touch(dir, 'run.py', 'import livekit\n');
+    expect(detectFramework(dir)).toBe('livekit');
+  });
+
+  it('prefers manifest detection over import scanning', () => {
+    const dir = makeTempDir();
+    // Manifest says pipecat, but a .py file imports livekit
+    touch(dir, 'requirements.txt', 'pipecat-ai\n');
+    touch(dir, 'agent.py', 'import livekit\n');
+    expect(detectFramework(dir)).toBe('pipecat');
+  });
 });
 
 describe('detect (full pipeline)', () => {
