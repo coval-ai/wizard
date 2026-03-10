@@ -39,15 +39,19 @@ jobs:
             exit 0
           fi
 
+          re_major='^[a-z]+(\([^)]*\))?!:'
+          re_feat='^feat(\([^)]*\))?:'
+          re_fix='^(fix|perf)(\([^)]*\))?:'
+
           TYPE="none"
           while IFS= read -r msg; do
             # Strip [LINEAR-XXX] / [SIM-123] style prefixes
             clean=$(echo "$msg" | sed 's/^\[[A-Za-z]*-[0-9]*\] //')
-            if [[ "$clean" =~ ^[a-z]+(\([^)]*\))?!: ]]; then
+            if [[ "$clean" =~ $re_major ]]; then
               TYPE="major"; break
-            elif [[ "$clean" =~ ^feat(\([^)]*\))?: ]] && [[ "$TYPE" != "major" ]]; then
+            elif [[ "$clean" =~ $re_feat ]] && [[ "$TYPE" != "major" ]]; then
               TYPE="minor"
-            elif [[ "$clean" =~ ^(fix|perf)(\([^)]*\))?: ]] && [[ "$TYPE" == "none" ]]; then
+            elif [[ "$clean" =~ $re_fix ]] && [[ "$TYPE" == "none" ]]; then
               TYPE="patch"
             fi
           done <<< "$COMMITS"
