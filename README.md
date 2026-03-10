@@ -1,14 +1,6 @@
 # @coval/wizard
 
-```text
-            (__)
-            (oo)
-    /--------\/
-   / |      ||
-  *  /\----/\
-     ~~    ~~
-  "Let me trace that for you."
-```
+<img src="covalWizard.png" alt="Coval Wizard" width="200" />
 
 Add [Coval](https://coval.dev) OTel tracing to your AI agent with one command.
 
