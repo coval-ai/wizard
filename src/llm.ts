@@ -1,15 +1,37 @@
 import {
-  ANTHROPIC_API_ENDPOINT,
   COVAL_WIZARD_ENDPOINT,
-  LLM_MODEL,
+  LLM_DEFAULTS,
   LLM_MAX_TOKENS,
+  type LLMProvider,
 } from './constants.js';
 import { buildSystemPrompt, buildUserPrompt } from './prompts.js';
 import type { Framework, WizardLLMResponse } from './types.js';
 
 /**
+ * Resolve LLM configuration from environment variables.
+ *
+ * - `WIZARD_LLM_KEY` — API key for direct LLM calls (skips Coval proxy)
+ * - `WIZARD_LLM_PROVIDER` — `anthropic` | `openai` | `gemini` (default: `anthropic`)
+ * - `WIZARD_LLM_MODEL` — override the default model for the provider
+ */
+function resolveLLMConfig() {
+  const key = process.env.WIZARD_LLM_KEY;
+  if (!key) return null;
+
+  const provider = (process.env.WIZARD_LLM_PROVIDER ?? 'anthropic') as LLMProvider;
+  if (!(provider in LLM_DEFAULTS)) {
+    throw new Error(`Unknown WIZARD_LLM_PROVIDER: ${provider}. Use: anthropic, openai, gemini`);
+  }
+
+  const defaults = LLM_DEFAULTS[provider];
+  const model = process.env.WIZARD_LLM_MODEL ?? defaults.model;
+
+  return { key, provider, model, endpoint: defaults.endpoint };
+}
+
+/**
  * Call the LLM to generate tracing code for the user's agent.
- * Routes to Anthropic direct (if WIZARD_LLM_KEY set) or Coval proxy.
+ * Routes to a direct provider (if WIZARD_LLM_KEY set) or the Coval proxy.
  */
 export async function callWizardLLM(opts: {
   apiKey: string;
@@ -21,43 +43,133 @@ export async function callWizardLLM(opts: {
   const systemPrompt = buildSystemPrompt(opts.framework);
   const userPrompt = buildUserPrompt(opts);
 
-  const llmKey = process.env.WIZARD_LLM_KEY;
-  if (llmKey) {
-    return fetchLLM(ANTHROPIC_API_ENDPOINT, {
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': llmKey,
-        'anthropic-version': '2023-06-01',
-      },
-      body: {
-        model: LLM_MODEL,
-        max_tokens: LLM_MAX_TOKENS,
-        system: systemPrompt,
-        messages: [{ role: 'user', content: userPrompt }],
-      },
-      extractJson: extractFromAnthropicResponse,
-    });
+  const config = resolveLLMConfig();
+  if (config) {
+    const text = await callProvider(config, systemPrompt, userPrompt);
+    return validateResponse(extractJson(text));
   }
 
-  return fetchLLM(COVAL_WIZARD_ENDPOINT, {
-    headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': opts.apiKey,
-    },
-    body: { system: systemPrompt, user: userPrompt },
-    extractJson: (data: unknown) => data,
-  });
+  return callCovalProxy(opts.apiKey, systemPrompt, userPrompt);
 }
 
-/** Generic fetch-parse-validate pipeline for LLM calls. */
-async function fetchLLM(
-  url: string,
-  opts: {
-    headers: Record<string, string>;
-    body: unknown;
-    extractJson: (data: unknown) => unknown;
-  },
+// ---------------------------------------------------------------------------
+// Provider adapters — each returns the raw text from the LLM
+// ---------------------------------------------------------------------------
+
+type ProviderConfig = NonNullable<ReturnType<typeof resolveLLMConfig>>;
+
+async function callProvider(
+  config: ProviderConfig,
+  systemPrompt: string,
+  userPrompt: string,
+): Promise<string> {
+  switch (config.provider) {
+    case 'anthropic':
+      return callAnthropic(config, systemPrompt, userPrompt);
+    case 'openai':
+      return callOpenAI(config, systemPrompt, userPrompt);
+    case 'gemini':
+      return callGemini(config, systemPrompt, userPrompt);
+  }
+}
+
+async function callAnthropic(
+  config: ProviderConfig,
+  systemPrompt: string,
+  userPrompt: string,
+): Promise<string> {
+  const res = await fetchJson(config.endpoint, {
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': config.key,
+      'anthropic-version': '2023-06-01',
+    },
+    body: {
+      model: config.model,
+      max_tokens: LLM_MAX_TOKENS,
+      system: systemPrompt,
+      messages: [{ role: 'user', content: userPrompt }],
+    },
+  });
+
+  const msg = res as { content: Array<{ type: string; text?: string }> };
+  const textBlock = msg.content?.find((b) => b.type === 'text');
+  if (!textBlock?.text) throw new Error('No text in Anthropic response');
+  return textBlock.text;
+}
+
+async function callOpenAI(
+  config: ProviderConfig,
+  systemPrompt: string,
+  userPrompt: string,
+): Promise<string> {
+  const res = await fetchJson(config.endpoint, {
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${config.key}`,
+    },
+    body: {
+      model: config.model,
+      max_tokens: LLM_MAX_TOKENS,
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userPrompt },
+      ],
+    },
+  });
+
+  const msg = res as { choices: Array<{ message: { content: string } }> };
+  const text = msg.choices?.[0]?.message?.content;
+  if (!text) throw new Error('No text in OpenAI response');
+  return text;
+}
+
+async function callGemini(
+  config: ProviderConfig,
+  systemPrompt: string,
+  userPrompt: string,
+): Promise<string> {
+  const url = `${config.endpoint}/${config.model}:generateContent?key=${config.key}`;
+
+  const res = await fetchJson(url, {
+    headers: { 'Content-Type': 'application/json' },
+    body: {
+      system_instruction: { parts: [{ text: systemPrompt }] },
+      contents: [{ role: 'user', parts: [{ text: userPrompt }] }],
+      generationConfig: { maxOutputTokens: LLM_MAX_TOKENS },
+    },
+  });
+
+  const msg = res as { candidates: Array<{ content: { parts: Array<{ text: string }> } }> };
+  const text = msg.candidates?.[0]?.content?.parts?.[0]?.text;
+  if (!text) throw new Error('No text in Gemini response');
+  return text;
+}
+
+// ---------------------------------------------------------------------------
+// Coval proxy fallback
+// ---------------------------------------------------------------------------
+
+async function callCovalProxy(
+  apiKey: string,
+  systemPrompt: string,
+  userPrompt: string,
 ): Promise<WizardLLMResponse> {
+  const data = await fetchJson(COVAL_WIZARD_ENDPOINT, {
+    headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey },
+    body: { system: systemPrompt, user: userPrompt },
+  });
+  return validateResponse(data);
+}
+
+// ---------------------------------------------------------------------------
+// Shared utilities
+// ---------------------------------------------------------------------------
+
+async function fetchJson(
+  url: string,
+  opts: { headers: Record<string, string>; body: unknown },
+): Promise<unknown> {
   const res = await fetch(url, {
     method: 'POST',
     headers: opts.headers,
@@ -69,21 +181,13 @@ async function fetchLLM(
     throw new Error(`LLM API error (${res.status}): ${body}`);
   }
 
-  const raw = opts.extractJson(await res.json());
-  return validateResponse(raw);
+  return res.json();
 }
 
-/** Extract text content from Anthropic Messages API response and parse JSON. */
-function extractFromAnthropicResponse(data: unknown): unknown {
-  const msg = data as { content: Array<{ type: string; text?: string }> };
-  const textBlock = msg.content?.find((b) => b.type === 'text');
-  if (!textBlock?.text) throw new Error('No text response from Claude');
-
-  let json = textBlock.text;
-  const fenced = json.match(/```(?:json)?\s*\n?([\s\S]*?)\n?```/);
-  if (fenced) json = fenced[1];
-
-  return JSON.parse(json);
+/** Extract JSON from LLM text that may be wrapped in a fenced code block. */
+export function extractJson(text: string): unknown {
+  const fenced = text.match(/```(?:json)?\s*\n?([\s\S]*?)\n?```/);
+  return JSON.parse(fenced ? fenced[1] : text);
 }
 
 /** Validate that LLM output has the required shape. */

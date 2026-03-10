@@ -2,10 +2,25 @@ export const COVAL_API_BASE = 'https://api.coval.dev';
 export const COVAL_TRACES_ENDPOINT = `${COVAL_API_BASE}/v1/traces`;
 export const COVAL_AGENTS_ENDPOINT = `${COVAL_API_BASE}/v1/agents`;
 export const COVAL_WIZARD_ENDPOINT = `${COVAL_API_BASE}/v1/wizard/complete`;
-export const ANTHROPIC_API_ENDPOINT = 'https://api.anthropic.com/v1/messages';
 
-export const LLM_MODEL = 'claude-sonnet-4-20250514';
 export const LLM_MAX_TOKENS = 8192;
+
+export type LLMProvider = 'anthropic' | 'openai' | 'gemini';
+
+export const LLM_DEFAULTS: Record<LLMProvider, { endpoint: string; model: string }> = {
+  anthropic: {
+    endpoint: 'https://api.anthropic.com/v1/messages',
+    model: 'claude-sonnet-4-20250514',
+  },
+  openai: {
+    endpoint: 'https://api.openai.com/v1/chat/completions',
+    model: 'gpt-4o',
+  },
+  gemini: {
+    endpoint: 'https://generativelanguage.googleapis.com/v1beta/models',
+    model: 'gemini-2.5-flash',
+  },
+};
 
 export const MAX_FILE_SIZE_BYTES = 50 * 1024;
 

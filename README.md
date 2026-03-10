@@ -53,7 +53,9 @@ Options:
 | Variable | Required | Description |
 |----------|----------|-------------|
 | `COVAL_API_KEY` | Yes | Your Coval API key (prompted if not set) |
-| `WIZARD_LLM_KEY` | No | Anthropic API key for local dev (bypasses Coval proxy) |
+| `WIZARD_LLM_KEY` | No | LLM API key for local dev (bypasses Coval proxy) |
+| `WIZARD_LLM_PROVIDER` | No | `anthropic` (default), `openai`, or `gemini` |
+| `WIZARD_LLM_MODEL` | No | Override the default model (e.g. `gpt-4o`, `gemini-2.5-flash`) |
 
 ## Development
 
@@ -78,7 +80,14 @@ npm run check        # Run all checks (typecheck + lint + format + test)
 ### Testing Against a Real Agent
 
 ```bash
+# Anthropic (default)
 COVAL_API_KEY=your-key WIZARD_LLM_KEY=sk-ant-... npm run dev -- ../your-agent/
+
+# OpenAI
+COVAL_API_KEY=your-key WIZARD_LLM_KEY=sk-... WIZARD_LLM_PROVIDER=openai npm run dev -- ../your-agent/
+
+# Gemini
+COVAL_API_KEY=your-key WIZARD_LLM_KEY=AIza... WIZARD_LLM_PROVIDER=gemini npm run dev -- ../your-agent/
 ```
 
 ## How It Works

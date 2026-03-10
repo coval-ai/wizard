@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { validateResponse, callWizardLLM } from '../llm.js';
-import { ANTHROPIC_API_ENDPOINT, COVAL_WIZARD_ENDPOINT } from '../constants.js';
+import { validateResponse, extractJson, callWizardLLM } from '../llm.js';
+import { COVAL_WIZARD_ENDPOINT, LLM_DEFAULTS } from '../constants.js';
 
 const VALID_LLM_RESPONSE = {
   coval_tracing_py: '# tracing code',
@@ -16,59 +16,111 @@ const CALL_OPTS = {
   additionalFiles: {},
 };
 
-describe('callWizardLLM', () => {
-  let savedKey: string | undefined;
+function mockFetchOk(responseBody: unknown) {
+  return vi
+    .spyOn(globalThis, 'fetch')
+    .mockResolvedValue(new Response(JSON.stringify(responseBody)));
+}
+
+describe('callWizardLLM provider routing', () => {
+  const savedEnv: Record<string, string | undefined> = {};
 
   beforeEach(() => {
-    savedKey = process.env.WIZARD_LLM_KEY;
+    savedEnv.WIZARD_LLM_KEY = process.env.WIZARD_LLM_KEY;
+    savedEnv.WIZARD_LLM_PROVIDER = process.env.WIZARD_LLM_PROVIDER;
+    savedEnv.WIZARD_LLM_MODEL = process.env.WIZARD_LLM_MODEL;
     vi.restoreAllMocks();
   });
 
   afterEach(() => {
-    if (savedKey !== undefined) {
-      process.env.WIZARD_LLM_KEY = savedKey;
-    } else {
-      delete process.env.WIZARD_LLM_KEY;
+    for (const [k, v] of Object.entries(savedEnv)) {
+      if (v !== undefined) process.env[k] = v;
+      else delete process.env[k];
     }
   });
 
-  it('routes to Anthropic when WIZARD_LLM_KEY is set', async () => {
-    process.env.WIZARD_LLM_KEY = 'sk-ant-test';
-
-    const anthropicResponse = {
-      content: [{ type: 'text', text: JSON.stringify(VALID_LLM_RESPONSE) }],
-    };
-    const mockFetch = vi
-      .spyOn(globalThis, 'fetch')
-      .mockResolvedValue(new Response(JSON.stringify(anthropicResponse)));
+  it('routes to Coval proxy when WIZARD_LLM_KEY is not set', async () => {
+    delete process.env.WIZARD_LLM_KEY;
+    const mock = mockFetchOk(VALID_LLM_RESPONSE);
 
     await callWizardLLM(CALL_OPTS);
 
-    const [url, init] = mockFetch.mock.calls[0];
-    expect(url).toBe(ANTHROPIC_API_ENDPOINT);
+    expect(mock.mock.calls[0][0]).toBe(COVAL_WIZARD_ENDPOINT);
+  });
+
+  it('routes to Anthropic by default when WIZARD_LLM_KEY is set', async () => {
+    process.env.WIZARD_LLM_KEY = 'sk-ant-test';
+    delete process.env.WIZARD_LLM_PROVIDER;
+
+    const mock = mockFetchOk({
+      content: [{ type: 'text', text: JSON.stringify(VALID_LLM_RESPONSE) }],
+    });
+
+    await callWizardLLM(CALL_OPTS);
+
+    const [url, init] = mock.mock.calls[0];
+    expect(url).toBe(LLM_DEFAULTS.anthropic.endpoint);
     const headers = init?.headers as Record<string, string>;
     expect(headers['x-api-key']).toBe('sk-ant-test');
     expect(headers['anthropic-version']).toBe('2023-06-01');
   });
 
-  it('routes to Coval proxy when WIZARD_LLM_KEY is not set', async () => {
-    delete process.env.WIZARD_LLM_KEY;
+  it('routes to OpenAI when WIZARD_LLM_PROVIDER=openai', async () => {
+    process.env.WIZARD_LLM_KEY = 'sk-openai-test';
+    process.env.WIZARD_LLM_PROVIDER = 'openai';
 
-    const mockFetch = vi
-      .spyOn(globalThis, 'fetch')
-      .mockResolvedValue(new Response(JSON.stringify(VALID_LLM_RESPONSE)));
+    const mock = mockFetchOk({
+      choices: [{ message: { content: JSON.stringify(VALID_LLM_RESPONSE) } }],
+    });
 
     await callWizardLLM(CALL_OPTS);
 
-    const [url, init] = mockFetch.mock.calls[0];
-    expect(url).toBe(COVAL_WIZARD_ENDPOINT);
+    const [url, init] = mock.mock.calls[0];
+    expect(url).toBe(LLM_DEFAULTS.openai.endpoint);
     const headers = init?.headers as Record<string, string>;
-    expect(headers['x-api-key']).toBe('test-api-key');
+    expect(headers['Authorization']).toBe('Bearer sk-openai-test');
+  });
+
+  it('routes to Gemini when WIZARD_LLM_PROVIDER=gemini', async () => {
+    process.env.WIZARD_LLM_KEY = 'gemini-key';
+    process.env.WIZARD_LLM_PROVIDER = 'gemini';
+
+    const mock = mockFetchOk({
+      candidates: [{ content: { parts: [{ text: JSON.stringify(VALID_LLM_RESPONSE) }] } }],
+    });
+
+    await callWizardLLM(CALL_OPTS);
+
+    const url = mock.mock.calls[0][0] as string;
+    expect(url).toContain('generativelanguage.googleapis.com');
+    expect(url).toContain('gemini-2.5-flash');
+    expect(url).toContain('key=gemini-key');
+  });
+
+  it('respects WIZARD_LLM_MODEL override', async () => {
+    process.env.WIZARD_LLM_KEY = 'sk-ant-test';
+    process.env.WIZARD_LLM_PROVIDER = 'anthropic';
+    process.env.WIZARD_LLM_MODEL = 'claude-opus-4-20250514';
+
+    const mock = mockFetchOk({
+      content: [{ type: 'text', text: JSON.stringify(VALID_LLM_RESPONSE) }],
+    });
+
+    await callWizardLLM(CALL_OPTS);
+
+    const body = JSON.parse(mock.mock.calls[0][1]?.body as string);
+    expect(body.model).toBe('claude-opus-4-20250514');
+  });
+
+  it('throws on unknown provider', async () => {
+    process.env.WIZARD_LLM_KEY = 'test';
+    process.env.WIZARD_LLM_PROVIDER = 'llama';
+
+    await expect(callWizardLLM(CALL_OPTS)).rejects.toThrow('Unknown WIZARD_LLM_PROVIDER');
   });
 
   it('throws on non-OK HTTP response', async () => {
     delete process.env.WIZARD_LLM_KEY;
-
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response('Unauthorized', { status: 401 }));
 
     await expect(callWizardLLM(CALL_OPTS)).rejects.toThrow('LLM API error (401)');
@@ -76,60 +128,50 @@ describe('callWizardLLM', () => {
 
   it('throws when Anthropic response has no text block', async () => {
     process.env.WIZARD_LLM_KEY = 'sk-ant-test';
+    delete process.env.WIZARD_LLM_PROVIDER;
+    mockFetchOk({ content: [{ type: 'image', source: {} }] });
 
-    const badResponse = { content: [{ type: 'image', source: {} }] };
-    vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify(badResponse)));
-
-    await expect(callWizardLLM(CALL_OPTS)).rejects.toThrow('No text response from Claude');
+    await expect(callWizardLLM(CALL_OPTS)).rejects.toThrow('No text in Anthropic response');
   });
 
-  it('extracts JSON from fenced code blocks in Anthropic response', async () => {
-    process.env.WIZARD_LLM_KEY = 'sk-ant-test';
+  it('throws when OpenAI response has no choices', async () => {
+    process.env.WIZARD_LLM_KEY = 'sk-test';
+    process.env.WIZARD_LLM_PROVIDER = 'openai';
+    mockFetchOk({ choices: [] });
 
-    const fencedJson = '```json\n' + JSON.stringify(VALID_LLM_RESPONSE) + '\n```';
-    const anthropicResponse = {
-      content: [{ type: 'text', text: fencedJson }],
-    };
-    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
-      new Response(JSON.stringify(anthropicResponse)),
-    );
-
-    const result = await callWizardLLM(CALL_OPTS);
-    expect(result).toEqual(VALID_LLM_RESPONSE);
+    await expect(callWizardLLM(CALL_OPTS)).rejects.toThrow('No text in OpenAI response');
   });
 
-  it('throws on invalid JSON in Anthropic response', async () => {
-    process.env.WIZARD_LLM_KEY = 'sk-ant-test';
+  it('throws when Gemini response has no candidates', async () => {
+    process.env.WIZARD_LLM_KEY = 'test';
+    process.env.WIZARD_LLM_PROVIDER = 'gemini';
+    mockFetchOk({ candidates: [] });
 
-    const anthropicResponse = {
-      content: [{ type: 'text', text: 'not valid json {{{' }],
-    };
-    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
-      new Response(JSON.stringify(anthropicResponse)),
-    );
+    await expect(callWizardLLM(CALL_OPTS)).rejects.toThrow('No text in Gemini response');
+  });
+});
 
-    await expect(callWizardLLM(CALL_OPTS)).rejects.toThrow();
+describe('extractJson', () => {
+  it('parses plain JSON', () => {
+    expect(extractJson('{"key": "value"}')).toEqual({ key: 'value' });
   });
 
-  it('throws when proxy returns response missing required fields', async () => {
-    delete process.env.WIZARD_LLM_KEY;
+  it('extracts from fenced code block', () => {
+    expect(extractJson('```json\n{"key": "value"}\n```')).toEqual({ key: 'value' });
+  });
 
-    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
-      new Response(JSON.stringify({ some: 'other data' })),
-    );
+  it('extracts from fence without language tag', () => {
+    expect(extractJson('```\n{"key": "value"}\n```')).toEqual({ key: 'value' });
+  });
 
-    await expect(callWizardLLM(CALL_OPTS)).rejects.toThrow('missing required fields');
+  it('throws on invalid JSON', () => {
+    expect(() => extractJson('not json {{')).toThrow();
   });
 });
 
 describe('validateResponse', () => {
   it('accepts a valid response', () => {
-    const data = {
-      coval_tracing_py: '# tracing code',
-      modified_entry_point: '# modified code',
-      explanation: 'Added tracing',
-    };
-    expect(validateResponse(data)).toEqual(data);
+    expect(validateResponse(VALID_LLM_RESPONSE)).toEqual(VALID_LLM_RESPONSE);
   });
 
   it('rejects null', () => {
