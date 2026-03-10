@@ -1,7 +1,6 @@
 export const COVAL_API_BASE = 'https://api.coval.dev'
 export const COVAL_TRACES_ENDPOINT = `${COVAL_API_BASE}/v1/traces`
 export const COVAL_AGENTS_ENDPOINT = `${COVAL_API_BASE}/v1/agents`
-export const COVAL_WIZARD_ENDPOINT = `${COVAL_API_BASE}/v1/wizard/complete`
 
 export const COVAL_API_KEY_ENV = 'COVAL_API_KEY'
 export const AUTH_TIMEOUT_MS = 10_000

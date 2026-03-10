@@ -7,7 +7,7 @@ import * as p from '@clack/prompts'
 import chalk from 'chalk'
 import { getApiKey, verifyApiKey } from './auth.js'
 import { detect } from './detect.js'
-import { callWizardLLM } from './llm.js'
+import { callWizardLLM, getLLMConfig } from './llm.js'
 import { readFile, backupFile, showDiff, writeFile, fileExists } from './files.js'
 import { sendTestSpan } from './validate.js'
 import { FRAMEWORK_LABELS, VERIFY_RESULTS, COVAL_TRACING_FILE } from './constants.js'
@@ -55,15 +55,17 @@ const main = async () => {
   p.log.success(`Entry point: ${chalk.bold(detection.entryPointPath)}`)
 
   // ── LLM ───────────────────────────────────────────────────────────────
+  const llmConfig = await getLLMConfig()
+
   const entryPointFullPath = join(targetDir, detection.entryPointPath)
   const entryPointContent = readFile(entryPointFullPath)
 
-  const providerName = process.env.WIZARD_LLM_PROVIDER ?? 'the LLM'
+  const providerName = llmConfig.provider
   spinner.start(`Analyzing your code with ${providerName}`)
   let result
   try {
     result = await callWizardLLM({
-      apiKey,
+      llmConfig,
       framework: detection.framework,
       entryPointPath: detection.entryPointPath,
       entryPointContent,

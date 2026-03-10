@@ -1,8 +1,8 @@
+import * as p from '@clack/prompts'
 import {
   ABORT_ERROR_NAME,
   ANTHROPIC_API_VERSION,
   CONTENT_TYPE_JSON,
-  COVAL_WIZARD_ENDPOINT,
   FRAMEWORKS,
   LLM_DEFAULTS,
   LLM_MAX_TOKENS,
@@ -15,36 +15,78 @@ import {
 import { buildSystemPrompt, buildUserPrompt } from './prompts.js'
 import type { WizardLLMResponse } from './types.js'
 
-/**
- * Resolve LLM configuration from environment variables.
- *
- * - `WIZARD_LLM_KEY` — API key for direct LLM calls (skips Coval proxy)
- * - `WIZARD_LLM_PROVIDER` — `anthropic` | `openai` | `gemini` (default: `anthropic`)
- * - `WIZARD_LLM_MODEL` — override the default model for the provider
- */
-const resolveLLMConfig = () => {
-  const key = process.env.WIZARD_LLM_KEY
-  if (!key) return null
+export type LLMConfig = {
+  key: string
+  provider: LLMProvider
+  model: string
+  endpoint: string
+}
 
-  const provider = (process.env.WIZARD_LLM_PROVIDER ?? LLM_PROVIDERS.ANTHROPIC) as LLMProvider
-  if (!(provider in LLM_DEFAULTS)) {
-    throw new Error(
-      `Unknown WIZARD_LLM_PROVIDER: ${provider}. Use: ${Object.values(LLM_PROVIDERS).join(', ')}`,
-    )
+/**
+ * Resolve LLM configuration — from env vars if set, otherwise prompt interactively.
+ *
+ * Env vars (skip the prompt):
+ * - `WIZARD_LLM_KEY`      — API key for the LLM provider
+ * - `WIZARD_LLM_PROVIDER` — `anthropic` | `openai` | `gemini` (default: `anthropic`)
+ * - `WIZARD_LLM_MODEL`    — override the default model for the provider
+ */
+export const getLLMConfig = async (): Promise<LLMConfig> => {
+  const envKey = process.env.WIZARD_LLM_KEY
+
+  if (envKey) {
+    const provider = (process.env.WIZARD_LLM_PROVIDER ?? LLM_PROVIDERS.ANTHROPIC) as LLMProvider
+    if (!(provider in LLM_DEFAULTS)) {
+      throw new Error(
+        `Unknown WIZARD_LLM_PROVIDER: ${provider}. Use: ${Object.values(LLM_PROVIDERS).join(', ')}`,
+      )
+    }
+    const defaults = LLM_DEFAULTS[provider]
+    return {
+      key: envKey,
+      provider,
+      model: process.env.WIZARD_LLM_MODEL ?? defaults.model,
+      endpoint: defaults.endpoint,
+    }
+  }
+
+  const provider = await p.select<LLMProvider>({
+    message: 'Which LLM provider should the wizard use to analyze your code?',
+    options: [
+      { value: LLM_PROVIDERS.ANTHROPIC, label: 'Anthropic (Claude)' },
+      { value: LLM_PROVIDERS.OPENAI, label: 'OpenAI' },
+      { value: LLM_PROVIDERS.GEMINI, label: 'Google Gemini' },
+    ],
+  })
+
+  if (p.isCancel(provider)) {
+    p.cancel('Cancelled.')
+    process.exit(0)
+  }
+
+  const providerLabels: Record<LLMProvider, string> = {
+    [LLM_PROVIDERS.ANTHROPIC]: 'Anthropic',
+    [LLM_PROVIDERS.OPENAI]: 'OpenAI',
+    [LLM_PROVIDERS.GEMINI]: 'Google',
+  }
+
+  const key = await p.password({
+    message: `Enter your ${providerLabels[provider]} API key`,
+  })
+
+  if (p.isCancel(key) || !key) {
+    p.cancel('Cancelled.')
+    process.exit(0)
   }
 
   const defaults = LLM_DEFAULTS[provider]
-  const model = process.env.WIZARD_LLM_MODEL ?? defaults.model
-
-  return { key, provider, model, endpoint: defaults.endpoint }
+  return { key, provider, model: defaults.model, endpoint: defaults.endpoint }
 }
 
 /**
  * Call the LLM to generate tracing code for the user's agent.
- * Routes to a direct provider (if WIZARD_LLM_KEY set) or the Coval proxy.
  */
 export const callWizardLLM = async (opts: {
-  apiKey: string
+  llmConfig: LLMConfig
   framework: Framework
   entryPointPath: string
   entryPointContent: string
@@ -52,24 +94,16 @@ export const callWizardLLM = async (opts: {
 }): Promise<WizardLLMResponse> => {
   const systemPrompt = buildSystemPrompt(opts.framework)
   const userPrompt = buildUserPrompt(opts)
-
-  const config = resolveLLMConfig()
-  if (config) {
-    const text = await callProvider(config, systemPrompt, userPrompt)
-    return validateResponse(extractJson(text))
-  }
-
-  return callCovalProxy(opts.apiKey, systemPrompt, userPrompt)
+  const text = await callProvider(opts.llmConfig, systemPrompt, userPrompt)
+  return validateResponse(extractJson(text))
 }
 
 // ---------------------------------------------------------------------------
 // Provider adapters — each returns the raw text from the LLM
 // ---------------------------------------------------------------------------
 
-type ProviderConfig = NonNullable<ReturnType<typeof resolveLLMConfig>>
-
 const callProvider = async (
-  config: ProviderConfig,
+  config: LLMConfig,
   systemPrompt: string,
   userPrompt: string,
 ): Promise<string> => {
@@ -84,7 +118,7 @@ const callProvider = async (
 }
 
 const callAnthropic = async (
-  config: ProviderConfig,
+  config: LLMConfig,
   systemPrompt: string,
   userPrompt: string,
 ): Promise<string> => {
@@ -109,7 +143,7 @@ const callAnthropic = async (
 }
 
 const callOpenAI = async (
-  config: ProviderConfig,
+  config: LLMConfig,
   systemPrompt: string,
   userPrompt: string,
 ): Promise<string> => {
@@ -135,7 +169,7 @@ const callOpenAI = async (
 }
 
 const callGemini = async (
-  config: ProviderConfig,
+  config: LLMConfig,
   systemPrompt: string,
   userPrompt: string,
 ): Promise<string> => {
@@ -154,22 +188,6 @@ const callGemini = async (
   const text = msg.candidates?.[0]?.content?.parts?.[0]?.text
   if (!text) throw new Error('No text in Gemini response')
   return text
-}
-
-// ---------------------------------------------------------------------------
-// Coval proxy fallback
-// ---------------------------------------------------------------------------
-
-const callCovalProxy = async (
-  apiKey: string,
-  systemPrompt: string,
-  userPrompt: string,
-): Promise<WizardLLMResponse> => {
-  const data = await fetchJson(COVAL_WIZARD_ENDPOINT, {
-    headers: { 'Content-Type': CONTENT_TYPE_JSON, 'x-api-key': apiKey },
-    body: { system: systemPrompt, user: userPrompt },
-  })
-  return validateResponse(data)
 }
 
 // ---------------------------------------------------------------------------
