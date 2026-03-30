@@ -1,6 +1,11 @@
 import { readFileSync, readdirSync, existsSync } from 'node:fs'
 import { join } from 'node:path'
-import { FRAMEWORKS, PROJECT_FILES, ENTRY_POINT_NAMES } from './constants.js'
+import {
+  FRAMEWORKS,
+  PROJECT_FILES,
+  ENTRY_POINT_NAMES,
+  PIPECAT_ENTRY_POINT_NAMES,
+} from './constants.js'
 import type { Framework, DetectionResult } from './types.js'
 
 /** Safely read a file, returning null on error. */
@@ -45,9 +50,10 @@ export const detectFramework = (dir: string): Framework => {
   return FRAMEWORKS.GENERIC
 }
 
-/** Find the most likely entry point file. */
-export const findEntryPoint = (dir: string): string | null => {
-  for (const name of ENTRY_POINT_NAMES) {
+/** Find the most likely entry point file. Uses framework-specific priority when provided. */
+export const findEntryPoint = (dir: string, framework?: Framework): string | null => {
+  const names = framework === FRAMEWORKS.PIPECAT ? PIPECAT_ENTRY_POINT_NAMES : ENTRY_POINT_NAMES
+  for (const name of names) {
     if (existsSync(join(dir, name))) return name
   }
 
@@ -80,7 +86,7 @@ export const detect = (dir: string): DetectionResult | null => {
   if (!projectFile) return null
 
   const framework = detectFramework(dir)
-  const entryPointPath = findEntryPoint(dir)
+  const entryPointPath = findEntryPoint(dir, framework)
   if (!entryPointPath) return null
 
   return {

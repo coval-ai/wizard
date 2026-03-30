@@ -1,8 +1,9 @@
 import { readFileSync, writeFileSync, copyFileSync, existsSync } from 'node:fs'
+import { join } from 'node:path'
 import { createTwoFilesPatch } from 'diff'
 import chalk from 'chalk'
 import * as p from '@clack/prompts'
-import { MAX_FILE_SIZE_BYTES } from './constants.js'
+import { MAX_FILE_SIZE_BYTES, OTEL_PACKAGES } from './constants.js'
 
 export const readFile = (path: string): string => {
   const content = readFileSync(path, 'utf-8')
@@ -42,3 +43,35 @@ export const writeFile = (path: string, content: string): void => {
 }
 
 export const fileExists = (path: string): boolean => existsSync(path)
+
+/**
+ * Add missing OTel packages to the project's dependency file.
+ * Handles requirements.txt (plain append) and pyproject.toml (injects into dependencies array).
+ * Returns the list of packages that were added, or an empty array if none were missing.
+ */
+export const addOtelDeps = (dir: string, projectFile: string): readonly string[] => {
+  const filePath = join(dir, projectFile)
+  const content = readFileSync(filePath, 'utf-8')
+
+  const missing = OTEL_PACKAGES.filter((pkg) => {
+    const name = pkg.split('>=')[0]
+    return !content.includes(name)
+  })
+
+  if (missing.length === 0) return []
+
+  if (projectFile === 'requirements.txt') {
+    writeFileSync(filePath, content.trimEnd() + '\n' + missing.join('\n') + '\n', 'utf-8')
+  } else if (projectFile === 'pyproject.toml') {
+    const updated = content.replace(
+      /(\[project\][\s\S]*?dependencies\s*=\s*\[)([\s\S]*?)(\])/,
+      (_, open: string, inner: string, close: string) => {
+        const additions = missing.map((p) => `    "${p}",`).join('\n')
+        return `${open}${inner}${additions}\n${close}`
+      },
+    )
+    if (updated !== content) writeFileSync(filePath, updated, 'utf-8')
+  }
+
+  return missing
+}
