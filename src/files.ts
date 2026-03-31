@@ -69,7 +69,7 @@ export const addOtelDeps = (dir: string, projectFile: string): readonly string[]
       /(\[project\][\s\S]*?dependencies\s*=\s*\[)([\s\S]*?)(\n\])/,
       (_, open: string, inner: string, close: string) => {
         const additions = missing.map((p) => `    "${p}",`).join('\n')
-        return `${open}${inner}${additions}\n${close}`
+        return `${open}${inner}\n${additions}${close}`
       },
     )
     if (updated !== content) writeFileSync(filePath, updated, 'utf-8')
