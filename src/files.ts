@@ -49,8 +49,17 @@ export const fileExists = (path: string): boolean => existsSync(path)
  * Handles requirements.txt (plain append) and pyproject.toml (injects into dependencies array).
  * Returns the list of packages that were added, or an empty array if none were missing.
  */
+/**
+ * Add missing OTel packages to the project's dependency file.
+ * Prefers requirements.txt when it exists (used by pip/Docker), falling back
+ * to pyproject.toml. Returns the list of packages added, or [] if none.
+ */
 export const addOtelDeps = (dir: string, projectFile: string): readonly string[] => {
-  const filePath = join(dir, projectFile)
+  // Always prefer requirements.txt when present — pip/Docker deployments use it
+  // regardless of whether pyproject.toml was detected as the primary project file.
+  const reqTxt = join(dir, 'requirements.txt')
+  const targetFile = existsSync(reqTxt) ? 'requirements.txt' : projectFile
+  const filePath = join(dir, targetFile)
   const content = readFileSync(filePath, 'utf-8')
 
   const missing = OTEL_PACKAGES.filter((pkg) => {
@@ -60,9 +69,9 @@ export const addOtelDeps = (dir: string, projectFile: string): readonly string[]
 
   if (missing.length === 0) return []
 
-  if (projectFile === 'requirements.txt') {
+  if (targetFile === 'requirements.txt') {
     writeFileSync(filePath, content.trimEnd() + '\n' + missing.join('\n') + '\n', 'utf-8')
-  } else if (projectFile === 'pyproject.toml') {
+  } else if (targetFile === 'pyproject.toml') {
     // Match the closing ] that sits on its own line to avoid matching ] inside
     // package extras like pipecat-ai[daily,openai]>=0.0.60
     const updated = content.replace(
