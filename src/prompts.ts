@@ -323,13 +323,15 @@ def create_tool_call_span(name: str = "", call_id: str = "", arguments: str = ""
 const FRAMEWORK_RULES: Record<Framework, string> = {
   pipecat: `## Pipecat Framework Rules
 - Inject \`setup_coval_tracing()\` BEFORE \`PipelineTask()\`, \`PipelineRunner()\`, or \`Pipeline()\` construction
-- Extract the simulation ID from \`args.body\` in the \`on_dialin_connected\` handler if present:
+- Extract the simulation ID from the SIP headers in \`args.body\` at the top of \`bot()\`, right after \`setup_coval_tracing()\`:
   \`\`\`python
-  sim_id = (args.body or {}).get("dialin_settings", {}).get("custom_context", {}).get("coval_simulation_id")
+  sip_headers = (body or {}).get("dialin_settings", {}).get("sip_headers", {})
+  sim_id = sip_headers.get("X-Coval-Simulation-Id") or sip_headers.get("x-coval-simulation-id")
   if sim_id:
       set_simulation_id(sim_id)
   \`\`\`
-- If there is NO \`on_dialin_connected\` handler, add a TODO comment for where to call \`set_simulation_id()\`
+  Place this immediately after \`body = getattr(args, "body", None) or {}\` (or after \`setup_coval_tracing()\` if body is extracted later). Do NOT put it inside \`on_dialin_connected\`.
+- If there is NO \`body\` variable extracted from \`args\`, add the body extraction then the sim ID lines above
 - Add \`enable_metrics=True\` and \`enable_tracing=True\` to PipelineTask if not already present`,
 
   livekit: `## LiveKit Agents Framework Rules
