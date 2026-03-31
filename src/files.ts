@@ -77,8 +77,10 @@ export const addOtelDeps = (dir: string, projectFile: string): readonly string[]
     const updated = content.replace(
       /(\[project\][\s\S]*?dependencies\s*=\s*\[)([\s\S]*?)(\n\])/,
       (_, open: string, inner: string, close: string) => {
+        // Ensure the last existing dep has a trailing comma before appending
+        const innerNormalized = inner.trimEnd().endsWith(',') ? inner : inner.trimEnd() + ','
         const additions = missing.map((p) => `    "${p}",`).join('\n')
-        return `${open}${inner}\n${additions}${close}`
+        return `${open}${innerNormalized}\n${additions}${close}`
       },
     )
     if (updated !== content) writeFileSync(filePath, updated, 'utf-8')
