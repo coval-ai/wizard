@@ -63,8 +63,10 @@ export const addOtelDeps = (dir: string, projectFile: string): readonly string[]
   if (projectFile === 'requirements.txt') {
     writeFileSync(filePath, content.trimEnd() + '\n' + missing.join('\n') + '\n', 'utf-8')
   } else if (projectFile === 'pyproject.toml') {
+    // Match the closing ] that sits on its own line to avoid matching ] inside
+    // package extras like pipecat-ai[daily,openai]>=0.0.60
     const updated = content.replace(
-      /(\[project\][\s\S]*?dependencies\s*=\s*\[)([\s\S]*?)(\])/,
+      /(\[project\][\s\S]*?dependencies\s*=\s*\[)([\s\S]*?)(\n\])/,
       (_, open: string, inner: string, close: string) => {
         const additions = missing.map((p) => `    "${p}",`).join('\n')
         return `${open}${inner}${additions}\n${close}`
