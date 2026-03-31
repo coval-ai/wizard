@@ -8,7 +8,7 @@ import chalk from 'chalk'
 import { getApiKey, verifyApiKey } from './auth.js'
 import { detect } from './detect.js'
 import { callWizardLLM, getLLMConfig } from './llm.js'
-import { readFile, backupFile, showDiff, writeFile, fileExists } from './files.js'
+import { readFile, backupFile, showDiff, writeFile, fileExists, addOtelDeps } from './files.js'
 import { sendTestSpan } from './validate.js'
 import { FRAMEWORK_LABELS, VERIFY_RESULTS, COVAL_TRACING_FILE } from './constants.js'
 
@@ -115,6 +115,11 @@ const main = async () => {
   writeFile(entryPointFullPath, result.modified_entry_point)
   p.log.success(`${isCreate ? 'Created' : 'Updated'} ${COVAL_TRACING_FILE}`)
   p.log.success(`Modified ${detection.entryPointPath}`)
+
+  const addedDeps = addOtelDeps(targetDir, detection.projectFile)
+  if (addedDeps.length > 0) {
+    p.log.success(`Added OTel packages to ${detection.projectFile}: ${addedDeps.join(', ')}`)
+  }
 
   // ── Validate ──────────────────────────────────────────────────────────
   let shouldValidate = true
