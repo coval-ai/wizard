@@ -334,6 +334,7 @@ const FRAMEWORK_RULES: Record<Framework, string> = {
 
   livekit: `## LiveKit Agents Framework Rules
 - Inject \`setup_coval_tracing()\` BEFORE \`AgentSession()\` or \`VoicePipelineAgent()\` construction
+- Add \`import asyncio\` to the top-level imports if not already present
 - Extract the simulation ID from the SIP participant attributes:
   \`\`\`python
   async def _check_sim_id(participant):
@@ -346,6 +347,24 @@ const FRAMEWORK_RULES: Record<Framework, string> = {
   \`\`\`
 - After \`await session.start()\`, add \`instrument_session(session)\`
 - Import \`instrument_session\` from \`coval_tracing\` alongside \`setup_coval_tracing\` and \`set_simulation_id\``,
+
+  vapi: `## Vapi Webhook Framework Rules
+- Add \`setup_coval_tracing()\` at module level, after imports and app creation
+- Vapi delivers a SIP header \`X-Coval-Simulation-Id\` which appears in \`message.call.assistantOverrides.variableValues["coval-simulation-id"]\` (Vapi auto-lowercases X- headers)
+- Extract the simulation ID from every webhook event as early as possible and cache it by call ID:
+  \`\`\`python
+  _call_sim_map: dict[str, str] = {}
+
+  # Inside the webhook handler, before any event-specific logic:
+  if call_id and call_id not in _call_sim_map:
+      var_values = call.get("assistantOverrides", {}).get("variableValues", {})
+      sim_id = var_values.get("coval-simulation-id")
+      if sim_id:
+          set_simulation_id(str(sim_id))
+          _call_sim_map[call_id] = str(sim_id)
+  \`\`\`
+- In the \`end-of-call-report\` handler, retrieve the cached simulation ID and use it
+- Do NOT import \`instrument_session\` — Vapi is webhook-based, not SDK-based`,
 
   generic: `## Generic Python Agent Rules
 - Add \`setup_coval_tracing()\` at module level, after imports

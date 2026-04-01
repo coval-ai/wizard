@@ -63,6 +63,18 @@ describe('detectFramework', () => {
     expect(detectFramework(dir)).toBe('livekit')
   })
 
+  it('detects vapi from requirements.txt', () => {
+    const dir = makeTempDir()
+    touch(dir, 'requirements.txt', 'vapi-python\nfastapi\n')
+    expect(detectFramework(dir)).toBe('vapi')
+  })
+
+  it('detects vapi from webhook patterns in Python code', () => {
+    const dir = makeTempDir()
+    touch(dir, 'server.py', '# vapi webhook handler for assistant-request\n')
+    expect(detectFramework(dir)).toBe('vapi')
+  })
+
   it('returns generic for unknown project', () => {
     const dir = makeTempDir()
     touch(dir, 'app.py', 'import flask\n')

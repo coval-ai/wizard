@@ -19,6 +19,14 @@ describe('buildSystemPrompt', () => {
     expect(prompt).toContain('AgentSession')
     expect(prompt).toContain('instrument_session')
     expect(prompt).toContain('sip.h.X-Coval-Simulation-Id')
+    expect(prompt).toContain('import asyncio')
+  })
+
+  it('includes vapi-specific rules', () => {
+    const prompt = buildSystemPrompt('vapi')
+    expect(prompt).toContain('assistantOverrides')
+    expect(prompt).toContain('coval-simulation-id')
+    expect(prompt).toContain('end-of-call-report')
   })
 
   it('includes generic rules', () => {
