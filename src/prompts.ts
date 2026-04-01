@@ -323,28 +323,30 @@ def create_tool_call_span(name: str = "", call_id: str = "", arguments: str = ""
 const FRAMEWORK_RULES: Record<Framework, string> = {
   pipecat: `## Pipecat Framework Rules
 - Inject \`setup_coval_tracing()\` BEFORE \`PipelineTask()\`, \`PipelineRunner()\`, or \`Pipeline()\` construction
-- Extract the simulation ID from \`args.body\` in the \`on_dialin_connected\` handler if present:
+- Extract the simulation ID from the SIP headers in \`args.body\` at the top of \`bot()\`, right after \`setup_coval_tracing()\`:
   \`\`\`python
-  sim_id = (args.body or {}).get("dialin_settings", {}).get("custom_context", {}).get("coval_simulation_id")
+  sip_headers = (body or {}).get("dialin_settings", {}).get("sip_headers", {})
+  sim_id = sip_headers.get("X-Coval-Simulation-Id") or sip_headers.get("x-coval-simulation-id")
   if sim_id:
       set_simulation_id(sim_id)
   \`\`\`
-- If there is NO \`on_dialin_connected\` handler, add a TODO comment for where to call \`set_simulation_id()\`
+  Place this immediately after \`body = getattr(args, "body", None) or {}\` (or after \`setup_coval_tracing()\` if body is extracted later). Do NOT put it inside \`on_dialin_connected\`.
+- If there is NO \`body\` variable extracted from \`args\`, add the body extraction then the sim ID lines above
 - Add \`enable_metrics=True\` and \`enable_tracing=True\` to PipelineTask if not already present`,
 
   livekit: `## LiveKit Agents Framework Rules
 - Inject \`setup_coval_tracing()\` BEFORE \`AgentSession()\` or \`VoicePipelineAgent()\` construction
-- Add \`import asyncio\` to the top-level imports if not already present
 - Extract the simulation ID from the SIP participant attributes:
   \`\`\`python
-  async def _check_sim_id(participant):
+  def _check_sim_id(participant):
       sim_id = participant.attributes.get("sip.h.X-Coval-Simulation-Id")
       if sim_id:
           set_simulation_id(sim_id)
 
-  ctx.room.on("participant_connected", lambda p: asyncio.ensure_future(_check_sim_id(p)))
-  ctx.room.on("participant_attributes_changed", lambda old, p: asyncio.ensure_future(_check_sim_id(p)))
+  ctx.room.on("participant_connected", _check_sim_id)
+  ctx.room.on("participant_attributes_changed", lambda old, p: _check_sim_id(p))
   \`\`\`
+- Do NOT use \`asyncio.ensure_future\` — \`set_simulation_id\` is synchronous, so \`_check_sim_id\` must be a plain \`def\`
 - After \`await session.start()\`, add \`instrument_session(session)\`
 - Import \`instrument_session\` from \`coval_tracing\` alongside \`setup_coval_tracing\` and \`set_simulation_id\``,
 

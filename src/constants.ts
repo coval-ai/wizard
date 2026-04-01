@@ -74,5 +74,15 @@ export const MAX_FILE_SIZE_BYTES = 50 * 1024
 /** Files that indicate a Python project, checked in priority order. */
 export const PROJECT_FILES = ['pyproject.toml', 'requirements.txt', 'Pipfile', 'setup.py'] as const
 
-/** Entry point filenames to look for, in priority order. */
+/** Entry point filenames to look for, in priority order (default / LiveKit). */
 export const ENTRY_POINT_NAMES = ['agent.py', 'main.py', 'bot.py', 'app.py', 'server.py'] as const
+
+/** Entry point filenames for Pipecat projects — bot.py takes priority (Pipecat Cloud convention). */
+export const PIPECAT_ENTRY_POINT_NAMES = ['bot.py', 'main.py', 'agent.py', 'app.py'] as const
+
+/** OTel packages required by coval_tracing.py. */
+export const OTEL_PACKAGES = [
+  'opentelemetry-api>=1.0.0',
+  'opentelemetry-sdk>=1.0.0',
+  'opentelemetry-exporter-otlp-proto-http>=1.0.0',
+] as const

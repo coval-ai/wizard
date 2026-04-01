@@ -19,7 +19,7 @@ describe('buildSystemPrompt', () => {
     expect(prompt).toContain('AgentSession')
     expect(prompt).toContain('instrument_session')
     expect(prompt).toContain('sip.h.X-Coval-Simulation-Id')
-    expect(prompt).toContain('import asyncio')
+    expect(prompt).toContain('Do NOT use')
   })
 
   it('includes vapi-specific rules', () => {

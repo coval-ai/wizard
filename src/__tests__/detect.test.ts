@@ -140,6 +140,20 @@ describe('findEntryPoint', () => {
     touch(dir, 'bot.py')
     expect(findEntryPoint(dir)).toBe('bot.py')
   })
+
+  it('prefers bot.py over agent.py for pipecat framework', () => {
+    const dir = makeTempDir()
+    touch(dir, 'agent.py')
+    touch(dir, 'bot.py')
+    expect(findEntryPoint(dir, 'pipecat')).toBe('bot.py')
+  })
+
+  it('keeps agent.py priority for livekit framework', () => {
+    const dir = makeTempDir()
+    touch(dir, 'agent.py')
+    touch(dir, 'bot.py')
+    expect(findEntryPoint(dir, 'livekit')).toBe('agent.py')
+  })
 })
 
 describe('detectFramework edge cases', () => {
@@ -176,6 +190,18 @@ describe('detect (full pipeline)', () => {
     expect(result!.entryPointPath).toBe('agent.py')
     expect(result!.projectFile).toBe('pyproject.toml')
     expect(result!.additionalFiles['pyproject.toml']).toBeDefined()
+  })
+
+  it('detects a Pipecat project and prefers bot.py over agent.py', () => {
+    const dir = makeTempDir()
+    touch(dir, 'requirements.txt', 'pipecat-ai\n')
+    touch(dir, 'agent.py', 'from pipecat.pipeline import Pipeline\n')
+    touch(dir, 'bot.py', 'from pipecat.pipeline import Pipeline\n')
+
+    const result = detect(dir)
+    expect(result).not.toBeNull()
+    expect(result!.framework).toBe('pipecat')
+    expect(result!.entryPointPath).toBe('bot.py')
   })
 
   it('returns null without a project file', () => {
