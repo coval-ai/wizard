@@ -33,15 +33,18 @@ export const detectFramework = (dir: string): Framework => {
     if (!content) continue
     if (/pipecat[-_]ai|"pipecat"/.test(content)) return FRAMEWORKS.PIPECAT
     if (/livekit[-_]agents|"livekit"/.test(content)) return FRAMEWORKS.LIVEKIT
+    if (/vapi[-_]python|"vapi"/.test(content)) return FRAMEWORKS.VAPI
   }
 
-  // Scan .py files for framework imports
+  // Scan .py files for framework imports and Vapi webhook patterns
   try {
     for (const f of readdirSync(dir).filter((f) => f.endsWith('.py'))) {
       const content = tryRead(join(dir, f))
       if (!content) continue
       if (/from pipecat|import pipecat/.test(content)) return FRAMEWORKS.PIPECAT
       if (/from livekit|import livekit/.test(content)) return FRAMEWORKS.LIVEKIT
+      if (/vapi.*(webhook|assistant-request|end-of-call-report)/.test(content))
+        return FRAMEWORKS.VAPI
     }
   } catch {
     // directory not readable

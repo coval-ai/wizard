@@ -26,6 +26,7 @@ export const CONTENT_TYPE_JSON = 'application/json'
 export const FRAMEWORKS = {
   PIPECAT: 'pipecat',
   LIVEKIT: 'livekit',
+  VAPI: 'vapi',
   GENERIC: 'generic',
 } as const
 
@@ -35,6 +36,7 @@ export type Framework = (typeof FRAMEWORKS)[keyof typeof FRAMEWORKS]
 export const FRAMEWORK_LABELS: Record<Framework, string> = {
   [FRAMEWORKS.PIPECAT]: 'Pipecat',
   [FRAMEWORKS.LIVEKIT]: 'LiveKit Agents',
+  [FRAMEWORKS.VAPI]: 'Vapi',
   [FRAMEWORKS.GENERIC]: 'Generic Python',
 }
 
@@ -73,7 +75,7 @@ export const MAX_FILE_SIZE_BYTES = 50 * 1024
 export const PROJECT_FILES = ['pyproject.toml', 'requirements.txt', 'Pipfile', 'setup.py'] as const
 
 /** Entry point filenames to look for, in priority order (default / LiveKit). */
-export const ENTRY_POINT_NAMES = ['agent.py', 'main.py', 'bot.py', 'app.py'] as const
+export const ENTRY_POINT_NAMES = ['agent.py', 'main.py', 'bot.py', 'app.py', 'server.py'] as const
 
 /** Entry point filenames for Pipecat projects — bot.py takes priority (Pipecat Cloud convention). */
 export const PIPECAT_ENTRY_POINT_NAMES = ['bot.py', 'main.py', 'agent.py', 'app.py'] as const
