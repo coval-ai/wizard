@@ -63,6 +63,7 @@ _SPAN_NAME_MAP = {
     "tts_request_run": "tts",
     "stt_request": "stt",
     "stt_request_run": "stt",
+    "tool_call": "llm_tool_call",
 }
 
 
